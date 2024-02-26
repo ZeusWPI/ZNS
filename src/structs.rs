@@ -1,24 +1,23 @@
-
 #[repr(u16)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Type {
     A = 1,
 }
 
 #[repr(u16)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Class {
     IN = 1,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Question {
     pub qname: Vec<String>, // TODO: not padded
     pub qtype: Type,        // NOTE: should be QTYPE, right now not really needed
-    pub qclass: Class,
+    pub qclass: Class,      //NOTE: should be QCLASS, right now not really needed
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Header {
     pub id: u16,
     pub flags: u16, // |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   | ; 1 | 4 | 1 | 1 | 1 | 1 | 3 | 4
@@ -28,7 +27,7 @@ pub struct Header {
     pub arcount: u16,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Message {
     pub header: Header,
     pub question: Question,
@@ -37,14 +36,14 @@ pub struct Message {
     pub additional: Option<RR>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RR {
-    name: String,
-    t: u16,
-    class: u16,
-    ttl: u32,
-    rdlength: u16,
-    rdata: String,
+    pub name: Vec<String>,
+    pub _type: Type,
+    pub class: Class,
+    pub ttl: i32,
+    pub rdlength: u16,
+    pub rdata: String,
 }
 
 #[derive(Debug)]
