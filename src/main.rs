@@ -22,7 +22,7 @@ async fn create_query(message: Message) -> Message {
         class: Class::IN,
         ttl: 4096,
         rdlength: ip.len() as u16,
-        rdata: ip,
+        rdata: vec![1,2,3,4],
     };
 
     response.header.flags |= 0b1000010110000000;
@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             tokio::spawn(async move {
                 let response = create_query(message).await;
                 println!("{:?}",response);
-                let vec = Message::to_bytes(&response);
+                let vec = Message::to_bytes(response);
                 let decoded = Message::from_bytes(vec.as_slice());
                 println!("{:?}",decoded);
                 let _ = socket.send_to(vec.as_slice(),addr).await;

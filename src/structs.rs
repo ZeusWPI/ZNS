@@ -43,8 +43,10 @@ pub struct RR {
     pub class: Class,
     pub ttl: i32,
     pub rdlength: u16,
-    pub rdata: String,
+    pub rdata: Vec<u8>,
 }
+
+pub type LabelString = (Vec<String>,usize);
 
 #[derive(Debug)]
 pub struct Response {
