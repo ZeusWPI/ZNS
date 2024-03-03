@@ -12,7 +12,7 @@ pub enum Class {
 
 #[derive(Debug, Clone)]
 pub struct Question {
-    pub qname: Vec<String>, // TODO: not padded
+    pub qname: Vec<String>,
     pub qtype: Type,        // NOTE: should be QTYPE, right now not really needed
     pub qclass: Class,      //NOTE: should be QCLASS, right now not really needed
 }
