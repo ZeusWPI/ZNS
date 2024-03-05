@@ -22,3 +22,14 @@ impl fmt::Display for ParseError {
         write!(f, "Parse Error for {}: {}", self.object, self.message)
     }
 }
+
+#[derive(Debug)]
+pub struct DatabaseError {
+    pub message: String,
+}
+
+impl fmt::Display for DatabaseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Database Error: {}", self.message)
+    }
+}

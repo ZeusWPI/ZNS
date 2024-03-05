@@ -8,23 +8,23 @@ use crate::{
 type Result<T> = std::result::Result<T, ParseError>;
 
 impl TryFrom<u16> for Type {
-    type Error = (); //TODO: user better error
+    type Error = String; 
 
-    fn try_from(value: u16) -> std::result::Result<Self, ()> {
+    fn try_from(value: u16) -> std::result::Result<Self, String> {
         match value {
             x if x == Type::A as u16 => Ok(Type::A),
-            _ => Err(()),
+            _ => Err(format!("Invalid Type value: {}",value)),
         }
     }
 }
 
 impl TryFrom<u16> for Class {
-    type Error = (); //TODO: user better error
+    type Error = String; 
 
-    fn try_from(value: u16) -> std::result::Result<Self, ()> {
+    fn try_from(value: u16) -> std::result::Result<Self, String> {
         match value {
             x if x == Class::IN as u16 => Ok(Class::IN),
-            _ => Err(()),
+            _ => Err(format!("Invalid Class value: {}",value)),
         }
     }
 }

@@ -2,6 +2,7 @@
 #[derive(Debug, Clone)]
 pub enum Type {
     A = 1,
+    AAAA = 28
 }
 
 #[repr(u16)]
