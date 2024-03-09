@@ -1,5 +1,12 @@
-use self::schema::records;
+use crate::{
+    errors::DatabaseError,
+    structs::{Class, Question, Type, RR},
+};
 use diesel::prelude::*;
+
+use self::schema::records;
+
+use super::lib::establish_connection;
 
 mod schema {
     diesel::table! {
@@ -17,7 +24,7 @@ mod schema {
 
 #[derive(Insertable, Queryable, Selectable)]
 #[diesel(table_name = records)]
-pub struct Record {
+struct Record {
     pub name: String,
     pub _type: i32,
     pub class: i32,
@@ -44,4 +51,44 @@ impl Record {
             .values(&new_record)
             .execute(db)
     }
+}
+
+pub async fn insert_into_database(rr: RR) -> Result<(), DatabaseError> {
+    let db_connection = &mut establish_connection();
+    let record = Record {
+        name: rr.name.join("."),
+        _type: rr._type as i32,
+        class: rr.class as i32,
+        ttl: rr.ttl,
+        rdlength: rr.rdlength as i32,
+        rdata: rr.rdata,
+    };
+
+    Record::create(db_connection, record).map_err(|e| DatabaseError {
+        message: e.to_string(),
+    })?;
+
+    Ok(())
+}
+
+pub async fn get_from_database(question: Question) -> Result<RR, DatabaseError> {
+    let db_connection = &mut establish_connection();
+    let record = Record::get(
+        db_connection,
+        question.qname.join("."),
+        question.qtype as i32,
+        question.qclass as i32,
+    )
+    .map_err(|e| DatabaseError {
+        message: e.to_string(),
+    })?;
+
+    Ok(RR {
+        name: record.name.split(".").map(str::to_string).collect(),
+        _type: Type::try_from(record._type as u16).map_err(|e| DatabaseError { message: e })?,
+        class: Class::try_from(record.class as u16).map_err(|e| DatabaseError { message: e })?,
+        ttl: record.ttl,
+        rdlength: record.rdlength as u16,
+        rdata: record.rdata,
+    })
 }

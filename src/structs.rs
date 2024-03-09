@@ -1,8 +1,9 @@
+use serde::Deserialize;
+
 #[repr(u16)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum Type {
     A = 1,
-    AAAA = 28
 }
 
 #[repr(u16)]
@@ -14,8 +15,8 @@ pub enum Class {
 #[derive(Debug, Clone)]
 pub struct Question {
     pub qname: Vec<String>,
-    pub qtype: Type,        // NOTE: should be QTYPE, right now not really needed
-    pub qclass: Class,      //NOTE: should be QCLASS, right now not really needed
+    pub qtype: Type,   // NOTE: should be QTYPE, right now not really needed
+    pub qclass: Class, //NOTE: should be QCLASS, right now not really needed
 }
 
 #[derive(Debug, Clone)]
@@ -47,7 +48,7 @@ pub struct RR {
     pub rdata: Vec<u8>,
 }
 
-pub type LabelString = (Vec<String>,usize);
+pub type LabelString = (Vec<String>, usize);
 
 #[derive(Debug)]
 pub struct Response {

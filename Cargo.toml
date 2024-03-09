@@ -7,7 +7,9 @@ edition = "2021"
 [dependencies]
 diesel = { version = "2.1.4", features = ["sqlite"] }
 dotenvy = "0.15"
-tokio = {version = "1.36.0", features = ["full"]}
-hyper = {version = "1.2.0", features = ["full"]}
-hyper-util = { version = "0.1", features = ["full"] }
+tokio = {version = "1.36.0", features = ["macros","rt-multi-thread"], default-features = false}
+hyper = {version = "1.2.0", features = ["server", "http1"], default-features = false}
+hyper-util = { version = "0.1", features = ["server","http1", "tokio"], default-features = false}
 http-body-util = "0.1"
+serde_json = {version="^1.0", default-features = false, features=["std"]}
+serde = {version="^1.0", features = ["derive"]}
