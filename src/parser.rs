@@ -38,6 +38,42 @@ pub trait FromBytes {
         Self: Sized;
 }
 
+impl Type {
+    pub fn to_bytes(&self, text: &String) -> Result<Vec<u8>> {
+        match self {
+            Type::A => {
+                let arr: Vec<u8> = text
+                    .split(".")
+                    .filter_map(|s| s.parse::<u8>().ok())
+                    .collect();
+                if arr.len() == 4 {
+                    Ok(arr)
+                } else {
+                    Err(ParseError {
+                        object: String::from("Type::A"),
+                        message: String::from("Invalid IPv4 address"),
+                    })
+                }
+            }
+        }
+    }
+    pub fn from_bytes(&self, bytes: &[u8]) -> Result<String> {
+        match self {
+            Type::A => {
+                if bytes.len() == 4 {
+                    let arr: Vec<String> = bytes.iter().map(|b| b.to_string()).collect();
+                    Ok(arr.join("."))
+                } else {
+                    Err(ParseError {
+                        object: String::from("Type::A"),
+                        message: String::from("Invalid Ipv4 address bytes"),
+                    })
+                }
+            }
+        }
+    }
+}
+
 impl FromBytes for Header {
     fn from_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() != size_of::<Header>() {

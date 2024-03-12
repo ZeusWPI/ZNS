@@ -1,10 +1,11 @@
+use std::collections::HashMap;
 use std::net::SocketAddr;
 
 use http_body_util::{BodyExt, Full};
 use hyper::body::{Buf, Bytes};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::{header, Method, Request, Response, StatusCode};
+use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 use serde::Deserialize;
 use tokio::net::TcpListener;
@@ -28,18 +29,22 @@ struct Record {
     data: String,
 }
 
-async fn api_post_response(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody>> {
+async fn create_record(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody>> {
     let whole_body = req.collect().await?.aggregate();
 
     match serde_json::from_reader::<_, Record>(whole_body.reader()) {
         Ok(record) => {
+            let rdata = record
+                ._type
+                .to_bytes(&record.data)
+                .map_err(|e| e.to_string())?;
             match insert_into_database(RR {
                 name: record.name,
                 _type: record._type,
                 class: Class::IN,
                 ttl: record.ttl,
-                rdlength: record.data.as_bytes().len() as u16,
-                rdata: record.data.as_bytes().to_vec(),
+                rdlength: rdata.len() as u16,
+                rdata,
             })
             .await
             {
@@ -55,30 +60,28 @@ async fn api_post_response(req: Request<hyper::body::Incoming>) -> Result<Respon
             }
         }
         Err(e) => Ok(Response::builder()
-            .status(StatusCode::FORBIDDEN)
+            .status(StatusCode::UNPROCESSABLE_ENTITY)
             .body(full(e.to_string()))?),
     }
 }
 
-async fn api_get_response() -> Result<Response<BoxBody>> {
-    let data = vec!["foo", "bar"];
-    let res = match serde_json::to_string(&data) {
-        Ok(json) => Response::builder()
-            .header(header::CONTENT_TYPE, "application/json")
-            .body(full(json))
-            .unwrap(),
-        Err(_) => Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .body(full(INTERNAL_SERVER_ERROR))
-            .unwrap(),
-    };
-    Ok(res)
+async fn get_record(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody>> {
+    if let Some(q) = req.uri().query() {
+        let params = form_urlencoded::parse(q.as_bytes()).into_owned().collect::<HashMap<String,String>>();
+        if let Some(domain) = params.get("domain_name") {
+            return Ok(Response::builder().status(StatusCode::OK).body(full(domain.to_owned()))?)
+        }
+    }
+
+    Ok(Response::builder()
+        .status(StatusCode::UNPROCESSABLE_ENTITY)
+        .body(full("Missing domain_name query parameter"))?)
 }
 
 async fn routes(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody>> {
     match (req.method(), req.uri().path()) {
-        (&Method::POST, "/add") => api_post_response(req).await,
-        (&Method::GET, "/json_api") => api_get_response().await,
+        (&Method::POST, "/add") => create_record(req).await,
+        (&Method::GET, "/get") => get_record(req).await,
         _ => Ok(Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(full(NOTFOUND))
