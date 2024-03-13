@@ -39,7 +39,7 @@ pub trait FromBytes {
 }
 
 impl Type {
-    pub fn to_bytes(&self, text: &String) -> Result<Vec<u8>> {
+    pub fn to_data(&self, text: &String) -> Result<Vec<u8>> {
         match self {
             Type::A => {
                 let arr: Vec<u8> = text
@@ -57,7 +57,7 @@ impl Type {
             }
         }
     }
-    pub fn from_bytes(&self, bytes: &[u8]) -> Result<String> {
+    pub fn from_data(&self, bytes: &[u8]) -> Result<String> {
         match self {
             Type::A => {
                 if bytes.len() == 4 {

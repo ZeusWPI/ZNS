@@ -3,7 +3,6 @@ use diesel::sqlite::SqliteConnection;
 use dotenvy::dotenv;
 use std::env;
 
-
 pub fn establish_connection() -> SqliteConnection {
     dotenv().ok();
 

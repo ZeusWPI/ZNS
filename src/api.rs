@@ -36,7 +36,7 @@ async fn create_record(req: Request<hyper::body::Incoming>) -> Result<Response<B
         Ok(record) => {
             let rdata = record
                 ._type
-                .to_bytes(&record.data)
+                .to_data(&record.data)
                 .map_err(|e| e.to_string())?;
             match insert_into_database(RR {
                 name: record.name,
@@ -67,9 +67,13 @@ async fn create_record(req: Request<hyper::body::Incoming>) -> Result<Response<B
 
 async fn get_record(req: Request<hyper::body::Incoming>) -> Result<Response<BoxBody>> {
     if let Some(q) = req.uri().query() {
-        let params = form_urlencoded::parse(q.as_bytes()).into_owned().collect::<HashMap<String,String>>();
+        let params = form_urlencoded::parse(q.as_bytes())
+            .into_owned()
+            .collect::<HashMap<String, String>>();
         if let Some(domain) = params.get("domain_name") {
-            return Ok(Response::builder().status(StatusCode::OK).body(full(domain.to_owned()))?)
+            return Ok(Response::builder()
+                .status(StatusCode::OK)
+                .body(full(domain.to_owned()))?);
         }
     }
 
