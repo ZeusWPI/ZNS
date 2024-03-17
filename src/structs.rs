@@ -4,6 +4,7 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 pub enum Type {
     A = 1,
+    OPT = 41
 }
 
 #[repr(u16)]
@@ -48,7 +49,14 @@ pub struct RR {
     pub rdata: Vec<u8>,
 }
 
-pub type LabelString = (Vec<String>, usize);
+#[derive(Debug, Clone)]
+pub struct OptRR {
+    pub code: u16,
+    pub length: u16,
+    pub rdata: Vec<u8>
+}
+
+pub type LabelString = Vec<String>;
 
 #[derive(Debug)]
 pub struct Response {

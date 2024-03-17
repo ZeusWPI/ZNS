@@ -2,7 +2,7 @@ use std::{mem::size_of, vec};
 
 use crate::{
     errors::ParseError,
-    structs::{Class, Header, LabelString, Message, Question, Type, RR},
+    structs::{Class, Header, LabelString, Message, OptRR, Question, Type, RR},
 };
 
 type Result<T> = std::result::Result<T, ParseError>;
@@ -30,12 +30,33 @@ impl TryFrom<u16> for Class {
 }
 
 pub trait FromBytes {
-    fn from_bytes(bytes: &[u8]) -> Result<Self>
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self>
     where
         Self: Sized;
     fn to_bytes(s: Self) -> Vec<u8>
     where
         Self: Sized;
+}
+
+pub fn parse_opt_type(bytes: &[u8]) -> Result<Vec<OptRR>> {
+    let mut pairs: Vec<OptRR> = vec![];
+    let mut i: usize = 0;
+    while i + 4 <= bytes.len() {
+        let length = u16::from_be_bytes(bytes[i + 2..i + 4].try_into().unwrap());
+        pairs.push(OptRR {
+            code: u16::from_be_bytes(bytes[i..i + 2].try_into().unwrap()),
+            length,
+            rdata: bytes[i + 4..i + 4 + length as usize]
+                .try_into()
+                .map_err(|_| ParseError {
+                    object: String::from("Type::OPT"),
+                    message: String::from("Invalid OPT DATA"),
+                })?,
+        });
+        i += 4 + length as usize;
+    }
+
+    Ok(pairs)
 }
 
 impl Type {
@@ -55,6 +76,7 @@ impl Type {
                     })
                 }
             }
+            Type::OPT => todo!(),
         }
     }
     pub fn from_data(&self, bytes: &[u8]) -> Result<String> {
@@ -70,18 +92,20 @@ impl Type {
                     })
                 }
             }
+            Type::OPT => unimplemented!()
         }
     }
 }
 
 impl FromBytes for Header {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        if bytes.len() != size_of::<Header>() {
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
+        if bytes.len() < size_of::<Header>() {
             Err(ParseError {
                 object: String::from("Header"),
                 message: String::from("Size of Header does not match"),
             })
         } else {
+            *i += size_of::<Header>();
             Ok(Header {
                 id: u16::from_be_bytes(bytes[0..2].try_into().unwrap()),
                 flags: u16::from_be_bytes(bytes[2..4].try_into().unwrap()),
@@ -91,6 +115,7 @@ impl FromBytes for Header {
                 arcount: u16::from_be_bytes(bytes[10..12].try_into().unwrap()),
             })
         }
+
     }
 
     fn to_bytes(header: Self) -> Vec<u8> {
@@ -105,25 +130,25 @@ impl FromBytes for Header {
 
         result.to_vec()
     }
+
 }
 
 impl FromBytes for LabelString {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let mut i = 0;
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
         let mut qname = vec![];
 
         // Parse qname labels
-        while bytes[i] != 0 && bytes[i] as usize + i < bytes.len() {
+        while bytes[*i] != 0 && bytes[*i] as usize + *i < bytes.len() {
             qname
-                .push(String::from_utf8(bytes[i + 1..bytes[i] as usize + 1 + i].to_vec()).unwrap());
-            i += bytes[i] as usize + 1;
+                .push(String::from_utf8(bytes[*i + 1..bytes[*i] as usize + 1 + *i].to_vec()).unwrap());
+            *i += bytes[*i] as usize + 1;
         }
 
-        i += 1;
-        Ok((qname, i))
+        *i += 1;
+        Ok(qname)
     }
 
-    fn to_bytes((name, _): Self) -> Vec<u8> {
+    fn to_bytes(name: Self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
         for label in name {
             result.push(label.len() as u8);
@@ -135,7 +160,7 @@ impl FromBytes for LabelString {
 }
 
 impl FromBytes for Question {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
         // 16 for length octet +  zero length octet
         if bytes.len() < 2 + size_of::<Class>() + size_of::<Type>() {
             Err(ParseError {
@@ -143,16 +168,16 @@ impl FromBytes for Question {
                 message: String::from("len of bytes smaller then minimum size"),
             })
         } else {
-            let (qname, i) = LabelString::from_bytes(bytes)?;
+            let qname = LabelString::from_bytes(bytes, i)?;
 
-            if bytes.len() - i < size_of::<Class>() + size_of::<Type>() {
+            if bytes.len() - *i < size_of::<Class>() + size_of::<Type>() {
                 Err(ParseError {
                     object: String::from("Question"),
                     message: String::from("len of rest bytes smaller then minimum size"),
                 })
             } else {
                 //Try Parse qtype
-                let qtype = Type::try_from(u16::from_be_bytes(bytes[i..i + 2].try_into().unwrap()))
+                let qtype = Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
                     .map_err(|_| ParseError {
                         object: String::from("Type"),
                         message: String::from("invalid"),
@@ -160,11 +185,13 @@ impl FromBytes for Question {
 
                 //Try Parse qclass
                 let qclass =
-                    Class::try_from(u16::from_be_bytes(bytes[i + 2..i + 4].try_into().unwrap()))
+                    Class::try_from(u16::from_be_bytes(bytes[*i + 2..*i + 4].try_into().unwrap()))
                         .map_err(|_| ParseError {
                             object: String::from("Class"),
                             message: String::from("invalid"),
                         })?;
+
+                *i += 4; // For qtype and qclass => 4 bytes
 
                 Ok(Question {
                     qname,
@@ -176,7 +203,7 @@ impl FromBytes for Question {
     }
 
     fn to_bytes(question: Self) -> Vec<u8> {
-        let mut result = LabelString::to_bytes((question.qname, 0));
+        let mut result = LabelString::to_bytes(question.qname);
         result.extend(u16::to_be_bytes(question.qtype.to_owned() as u16));
         result.extend(u16::to_be_bytes(question.qclass.to_owned() as u16));
         result
@@ -184,50 +211,51 @@ impl FromBytes for Question {
 }
 
 impl FromBytes for RR {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let (name, i) = LabelString::from_bytes(bytes)?;
-        if bytes.len() - i < size_of::<Type>() + size_of::<Class>() + 6 {
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
+        let name = LabelString::from_bytes(bytes, i)?;
+        if bytes.len() - *i < size_of::<Type>() + size_of::<Class>() + 6 {
             Err(ParseError {
                 object: String::from("RR"),
                 message: String::from("len of rest of bytes smaller then minimum size"),
             })
         } else {
-            let _type = Type::try_from(u16::from_be_bytes(bytes[i..i + 2].try_into().unwrap()))
+            let _type = Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
                 .map_err(|_| ParseError {
                     object: String::from("Type"),
                     message: String::from("invalid"),
                 })?;
 
             let class =
-                Class::try_from(u16::from_be_bytes(bytes[i + 2..i + 4].try_into().unwrap()))
+                Class::try_from(u16::from_be_bytes(bytes[*i + 2..*i + 4].try_into().unwrap()))
                     .map_err(|_| ParseError {
                         object: String::from("Class"),
                         message: String::from("invalid"),
                     })?;
 
-            let ttl = i32::from_be_bytes(bytes[i + 4..i + 8].try_into().unwrap());
-            let rdlength = u16::from_be_bytes(bytes[i + 8..i + 10].try_into().unwrap());
+            let ttl = i32::from_be_bytes(bytes[*i + 4..*i + 8].try_into().unwrap());
+            let rdlength = u16::from_be_bytes(bytes[*i + 8..*i + 10].try_into().unwrap());
 
-            if bytes.len() - i - 10 != rdlength as usize {
+            if bytes.len() - *i - 10 != rdlength as usize {
                 Err(ParseError {
                     object: String::from("RR"),
                     message: String::from("len of rest of bytes not equal to rdlength"),
                 })
             } else {
+                *i += 10 + rdlength as usize;
                 Ok(RR {
                     name,
                     _type,
                     class,
                     ttl,
                     rdlength,
-                    rdata: bytes[i + 10..].to_vec(),
+                    rdata: bytes[*i - rdlength as usize.. *i].to_vec(),
                 })
             }
         }
     }
 
     fn to_bytes(rr: Self) -> Vec<u8> {
-        let mut result = LabelString::to_bytes((rr.name, 0));
+        let mut result = LabelString::to_bytes(rr.name);
         result.extend(u16::to_be_bytes(rr._type.to_owned() as u16));
         result.extend(u16::to_be_bytes(rr.class.to_owned() as u16));
         result.extend(i32::to_be_bytes(rr.ttl.to_owned()));
@@ -238,9 +266,10 @@ impl FromBytes for RR {
 }
 
 impl FromBytes for Message {
-    fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let header = Header::from_bytes(&bytes[0..12])?;
-        let question = Question::from_bytes(&bytes[12..])?;
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
+        let header = Header::from_bytes(&bytes,i)?;
+        let question = Question::from_bytes(&bytes,i)?;
+
         Ok(Message {
             header,
             question,
