@@ -4,13 +4,30 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 pub enum Type {
     A = 1,
-    OPT = 41
+    SOA = 6
 }
 
 #[repr(u16)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Class {
     IN = 1,
+    NONE = 254,
+    ANY = 255
+}
+
+#[repr(u16)]
+pub enum RCODE {
+    NOERROR = 0,
+    FORMERR = 1,
+    SERVFAIL = 2,
+    NXDOMAIN = 3,
+    NOTIMP = 4,
+    REFUSED = 5,
+    YXDOMAIN = 6,
+    YXRRSET = 7,
+    NXRRSET = 8,
+    NOTAUTH = 9,
+    NOTZONE = 10
 }
 
 #[derive(Debug, Clone)]
@@ -33,10 +50,10 @@ pub struct Header {
 #[derive(Debug, Clone)]
 pub struct Message {
     pub header: Header,
-    pub question: Question,
-    pub answer: Option<RR>,
-    pub authority: Option<RR>,
-    pub additional: Option<RR>,
+    pub question: Vec<Question>,
+    pub answer: Vec<RR>,
+    pub authority: Vec<RR>,
+    pub additional: Vec<RR>,
 }
 
 #[derive(Debug, Clone)]

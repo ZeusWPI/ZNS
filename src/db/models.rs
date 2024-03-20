@@ -71,13 +71,13 @@ pub async fn insert_into_database(rr: RR) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub async fn get_from_database(question: Question) -> Result<RR, DatabaseError> {
+pub async fn get_from_database(question: &Question) -> Result<RR, DatabaseError> {
     let db_connection = &mut establish_connection();
     let record = Record::get(
         db_connection,
         question.qname.join("."),
-        question.qtype as i32,
-        question.qclass as i32,
+        question.qtype.clone() as i32,
+        question.qclass.clone() as i32,
     )
     .map_err(|e| DatabaseError {
         message: e.to_string(),

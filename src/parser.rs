@@ -76,7 +76,7 @@ impl Type {
                     })
                 }
             }
-            Type::OPT => todo!(),
+            Type::SOA => todo!(),
         }
     }
     pub fn from_data(&self, bytes: &[u8]) -> Result<String> {
@@ -92,7 +92,7 @@ impl Type {
                     })
                 }
             }
-            Type::OPT => unimplemented!()
+            Type::SOA => todo!(),
         }
     }
 }
@@ -115,7 +115,6 @@ impl FromBytes for Header {
                 arcount: u16::from_be_bytes(bytes[10..12].try_into().unwrap()),
             })
         }
-
     }
 
     fn to_bytes(header: Self) -> Vec<u8> {
@@ -130,7 +129,6 @@ impl FromBytes for Header {
 
         result.to_vec()
     }
-
 }
 
 impl FromBytes for LabelString {
@@ -139,8 +137,9 @@ impl FromBytes for LabelString {
 
         // Parse qname labels
         while bytes[*i] != 0 && bytes[*i] as usize + *i < bytes.len() {
-            qname
-                .push(String::from_utf8(bytes[*i + 1..bytes[*i] as usize + 1 + *i].to_vec()).unwrap());
+            qname.push(
+                String::from_utf8(bytes[*i + 1..bytes[*i] as usize + 1 + *i].to_vec()).unwrap(),
+            );
             *i += bytes[*i] as usize + 1;
         }
 
@@ -177,19 +176,21 @@ impl FromBytes for Question {
                 })
             } else {
                 //Try Parse qtype
-                let qtype = Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
-                    .map_err(|_| ParseError {
-                        object: String::from("Type"),
-                        message: String::from("invalid"),
-                    })?;
-
-                //Try Parse qclass
-                let qclass =
-                    Class::try_from(u16::from_be_bytes(bytes[*i + 2..*i + 4].try_into().unwrap()))
+                let qtype =
+                    Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
                         .map_err(|_| ParseError {
-                            object: String::from("Class"),
+                            object: String::from("Type"),
                             message: String::from("invalid"),
                         })?;
+
+                //Try Parse qclass
+                let qclass = Class::try_from(u16::from_be_bytes(
+                    bytes[*i + 2..*i + 4].try_into().unwrap(),
+                ))
+                .map_err(|_| ParseError {
+                    object: String::from("Class"),
+                    message: String::from("invalid"),
+                })?;
 
                 *i += 4; // For qtype and qclass => 4 bytes
 
@@ -221,16 +222,17 @@ impl FromBytes for RR {
         } else {
             let _type = Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
                 .map_err(|_| ParseError {
-                    object: String::from("Type"),
-                    message: String::from("invalid"),
-                })?;
+                object: String::from("Type"),
+                message: String::from("invalid"),
+            })?;
 
-            let class =
-                Class::try_from(u16::from_be_bytes(bytes[*i + 2..*i + 4].try_into().unwrap()))
-                    .map_err(|_| ParseError {
-                        object: String::from("Class"),
-                        message: String::from("invalid"),
-                    })?;
+            let class = Class::try_from(u16::from_be_bytes(
+                bytes[*i + 2..*i + 4].try_into().unwrap(),
+            ))
+            .map_err(|_| ParseError {
+                object: String::from("Class"),
+                message: String::from("invalid"),
+            })?;
 
             let ttl = i32::from_be_bytes(bytes[*i + 4..*i + 8].try_into().unwrap());
             let rdlength = u16::from_be_bytes(bytes[*i + 8..*i + 10].try_into().unwrap());
@@ -248,7 +250,7 @@ impl FromBytes for RR {
                     class,
                     ttl,
                     rdlength,
-                    rdata: bytes[*i - rdlength as usize.. *i].to_vec(),
+                    rdata: bytes[*i - rdlength as usize..*i].to_vec(),
                 })
             }
         }
@@ -267,30 +269,52 @@ impl FromBytes for RR {
 
 impl FromBytes for Message {
     fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
-        let header = Header::from_bytes(&bytes,i)?;
-        let question = Question::from_bytes(&bytes,i)?;
+        let header = Header::from_bytes(&bytes, i)?;
+
+        let mut question = vec![];
+        for _ in 0..header.qdcount {
+            question.push(Question::from_bytes(&bytes, i)?);
+        }
+
+        let mut answer = vec![];
+        for _ in 0..header.ancount {
+            answer.push(RR::from_bytes(&bytes, i)?);
+        }
+
+        let mut authority = vec![];
+        for _ in 0..header.nscount {
+            authority.push(RR::from_bytes(&bytes, i)?);
+        }
+
+        let mut additional = vec![];
+        for _ in 0..header.nscount {
+            additional.push(RR::from_bytes(&bytes, i)?);
+        }
 
         Ok(Message {
             header,
             question,
-            answer: None,
-            authority: None,
-            additional: None,
+            answer,
+            authority,
+            additional,
         })
     }
 
     fn to_bytes(message: Self) -> Vec<u8> {
         let mut result = vec![];
         result.extend(Header::to_bytes(message.header));
-        result.extend(Question::to_bytes(message.question));
-        if message.answer.is_some() {
-            result.extend(RR::to_bytes(message.answer.unwrap()));
+
+        for question in message.question {
+            result.extend(Question::to_bytes(question));
         }
-        if message.authority.is_some() {
-            result.extend(RR::to_bytes(message.authority.unwrap()));
+        for answer in message.answer {
+            result.extend(RR::to_bytes(answer));
         }
-        if message.additional.is_some() {
-            result.extend(RR::to_bytes(message.additional.unwrap()));
+        for auth in message.authority {
+            result.extend(RR::to_bytes(auth));
+        }
+        for additional in message.additional {
+            result.extend(RR::to_bytes(additional));
         }
         result
     }

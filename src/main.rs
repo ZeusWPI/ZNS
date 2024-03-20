@@ -8,6 +8,7 @@ mod errors;
 mod parser;
 mod resolver;
 mod structs;
+mod utils;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
