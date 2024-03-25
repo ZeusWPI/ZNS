@@ -4,19 +4,25 @@ use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
-use crate::db::models::get_from_database;
+use crate::db::models::{get_from_database, insert_into_database};
 use crate::parser::FromBytes;
-use crate::structs::{Class, Message, Type, RCODE};
+use crate::structs::{Class, Message, Type, RCODE, RR, Opcode};
 use crate::utils::vec_equal;
 
 const MAX_DATAGRAM_SIZE: usize = 4096;
 
 fn set_response_flags(flags: u16, rcode: RCODE) -> u16 {
-    (flags | 0b1000010000000000 | rcode as u16) & 0b1_1111_1_0_1_0_111_1111
+    (flags | 0b1_0000_1_0_0_0_000_0000 | rcode as u16) & 0b1_1111_1_0_1_0_111_1111
+}
+
+
+fn get_opcode(flags: &u16) -> Result<Opcode, String> {
+    Opcode::try_from((flags & 0b0111100000000000) >> 11)
 }
 
 async fn handle_query(message: Message) -> Message {
     let mut response = message.clone();
+    response.header.arcount = 0; //TODO: fix this, handle unknown class values
 
     for question in message.question {
         let answer = get_from_database(&question).await;
@@ -28,7 +34,6 @@ async fn handle_query(message: Message) -> Message {
                 response.answer = vec![rr]
             }
             Err(e) => {
-                response.header.flags |= 0b1000010110000011;
                 response.header.flags = set_response_flags(response.header.flags, RCODE::NXDOMAIN);
                 eprintln!("{}", e);
             }
@@ -48,10 +53,11 @@ async fn handle_update(message: Message) -> Message {
     }
 
     // Check Zone authority
-    let zlen = message.question[0].qname.len();
+    let zone = &message.question[0];
+    let zlen = zone.qname.len();
     if !(zlen >= 2
-        && message.question[0].qname[zlen - 1] == "gent"
-        && message.question[0].qname[zlen - 2] == "zeus")
+        && zone.qname[zlen - 1] == "gent"
+        && zone.qname[zlen - 2] == "zeus")
     {
         response.header.flags = set_response_flags(response.header.flags, RCODE::NOTAUTH);
         return response;
@@ -67,18 +73,18 @@ async fn handle_update(message: Message) -> Message {
     //  TODO: implement this, use rfc2931
 
     // Update Section Prescan
-    for rr in message.authority {
+    for rr in &message.authority {
         let rlen = rr.name.len();
 
         // Check if rr has same zone
-        if rlen < zlen || !(vec_equal(&message.question[0].qname, &rr.name[rlen - zlen..])) {
+        if rlen < zlen || !(vec_equal(&zone.qname, &rr.name[rlen - zlen..])) {
             response.header.flags = set_response_flags(response.header.flags, RCODE::NOTZONE);
             return response;
         }
 
         if (rr.class == Class::ANY && (rr.ttl != 0 || rr.rdlength != 0))
             || (rr.class == Class::NONE && rr.ttl != 0)
-            || rr.class != message.question[0].qclass
+            || rr.class != zone.qclass
         {
             response.header.flags = set_response_flags(response.header.flags, RCODE::FORMERR);
             return response;
@@ -86,13 +92,32 @@ async fn handle_update(message: Message) -> Message {
 
     }
 
+    for rr in message.authority {
+        if rr.class == zone.qclass {
+            insert_into_database(rr).await;
+        } else if rr.class == Class::ANY {
+            response.header.flags = set_response_flags(response.header.flags, RCODE::NOTIMP);
+            return response;
+        } else if rr.class == Class::ANY {
+            response.header.flags = set_response_flags(response.header.flags, RCODE::NOTIMP);
+            return response;
+        }
+    }
+
+    response.header.flags = set_response_flags(response.header.flags, RCODE::NOERROR);
     response
 }
 
 async fn get_response(bytes: &[u8]) -> Message {
     let mut i: usize = 0;
     match Message::from_bytes(bytes, &mut i) {
-        Ok(message) => handle_query(message).await,
+        Ok(message) => match get_opcode(&message.header.flags) {
+            Ok(opcode) => match opcode {
+                Opcode::QUERY => handle_query(message).await,
+                Opcode::UPDATE => handle_update(message).await,
+            },
+            Err(_) => todo!(),
+        },
         Err(err) => {
             println!("{}", err);
             unimplemented!() //TODO: implement this

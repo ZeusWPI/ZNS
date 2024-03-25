@@ -2,7 +2,7 @@ use std::{mem::size_of, vec};
 
 use crate::{
     errors::ParseError,
-    structs::{Class, Header, LabelString, Message, OptRR, Question, Type, RR},
+    structs::{Class, Header, LabelString, Message, Opcode, OptRR, Question, Type, RR},
 };
 
 type Result<T> = std::result::Result<T, ParseError>;
@@ -13,6 +13,8 @@ impl TryFrom<u16> for Type {
     fn try_from(value: u16) -> std::result::Result<Self, String> {
         match value {
             x if x == Type::A as u16 => Ok(Type::A),
+            x if x == Type::OPT as u16 => Ok(Type::OPT),
+            x if x == Type::SOA as u16 => Ok(Type::SOA),
             _ => Err(format!("Invalid Type value: {}", value)),
         }
     }
@@ -25,6 +27,18 @@ impl TryFrom<u16> for Class {
         match value {
             x if x == Class::IN as u16 => Ok(Class::IN),
             _ => Err(format!("Invalid Class value: {}", value)),
+        }
+    }
+}
+
+impl TryFrom<u16> for Opcode {
+    type Error = String;
+
+    fn try_from(value: u16) -> std::result::Result<Self, String> {
+        match value {
+            x if x == Opcode::QUERY as u16 => Ok(Opcode::QUERY),
+            x if x == Opcode::UPDATE as u16 => Ok(Opcode::UPDATE),
+            _ => Err(format!("Invalid Opcode value: {}", value)),
         }
     }
 }
@@ -77,6 +91,7 @@ impl Type {
                 }
             }
             Type::SOA => todo!(),
+            Type::OPT => todo!(),
         }
     }
     pub fn from_data(&self, bytes: &[u8]) -> Result<String> {
@@ -93,6 +108,7 @@ impl Type {
                 }
             }
             Type::SOA => todo!(),
+            Type::OPT => todo!(),
         }
     }
 }
@@ -136,11 +152,27 @@ impl FromBytes for LabelString {
         let mut qname = vec![];
 
         // Parse qname labels
-        while bytes[*i] != 0 && bytes[*i] as usize + *i < bytes.len() {
+        while bytes[*i] != 0
+            && (bytes[*i] & 0b11000000 == 0)
+            && bytes[*i] as usize + *i < bytes.len()
+        {
             qname.push(
                 String::from_utf8(bytes[*i + 1..bytes[*i] as usize + 1 + *i].to_vec()).unwrap(),
             );
             *i += bytes[*i] as usize + 1;
+        }
+
+        if bytes[*i] & 0b11000000 != 0 {
+            let offset = u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()) & 0b00111111;
+            if *i <= offset as usize {
+                return Err(ParseError {
+                    object: String::from("Label"),
+                    message: String::from("Invalid PTR"),
+                });
+            } else {
+                qname.extend(LabelString::from_bytes(bytes, &mut (offset as usize))?);
+                *i += 1;
+            }
         }
 
         *i += 1;
@@ -178,18 +210,18 @@ impl FromBytes for Question {
                 //Try Parse qtype
                 let qtype =
                     Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
-                        .map_err(|_| ParseError {
+                        .map_err(|e| ParseError {
                             object: String::from("Type"),
-                            message: String::from("invalid"),
+                            message: e,
                         })?;
 
                 //Try Parse qclass
                 let qclass = Class::try_from(u16::from_be_bytes(
                     bytes[*i + 2..*i + 4].try_into().unwrap(),
                 ))
-                .map_err(|_| ParseError {
+                .map_err(|e| ParseError {
                     object: String::from("Class"),
-                    message: String::from("invalid"),
+                    message: e,
                 })?;
 
                 *i += 4; // For qtype and qclass => 4 bytes
@@ -214,6 +246,7 @@ impl FromBytes for Question {
 impl FromBytes for RR {
     fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
         let name = LabelString::from_bytes(bytes, i)?;
+        println!("{:#?}", name);
         if bytes.len() - *i < size_of::<Type>() + size_of::<Class>() + 6 {
             Err(ParseError {
                 object: String::from("RR"),
@@ -221,17 +254,17 @@ impl FromBytes for RR {
             })
         } else {
             let _type = Type::try_from(u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()))
-                .map_err(|_| ParseError {
+                .map_err(|e| ParseError {
                 object: String::from("Type"),
-                message: String::from("invalid"),
+                message: e,
             })?;
 
             let class = Class::try_from(u16::from_be_bytes(
                 bytes[*i + 2..*i + 4].try_into().unwrap(),
             ))
-            .map_err(|_| ParseError {
+            .map_err(|e| ParseError {
                 object: String::from("Class"),
-                message: String::from("invalid"),
+                message: e,
             })?;
 
             let ttl = i32::from_be_bytes(bytes[*i + 4..*i + 8].try_into().unwrap());
@@ -287,7 +320,7 @@ impl FromBytes for Message {
         }
 
         let mut additional = vec![];
-        for _ in 0..header.nscount {
+        for _ in 0..header.arcount {
             additional.push(RR::from_bytes(&bytes, i)?);
         }
 

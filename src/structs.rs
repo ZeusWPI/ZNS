@@ -4,7 +4,8 @@ use serde::Deserialize;
 #[derive(Debug, Clone, Deserialize)]
 pub enum Type {
     A = 1,
-    SOA = 6
+    SOA = 6,
+    OPT = 41
 }
 
 #[repr(u16)]
@@ -28,6 +29,11 @@ pub enum RCODE {
     NXRRSET = 8,
     NOTAUTH = 9,
     NOTZONE = 10
+}
+
+pub enum Opcode {
+    QUERY = 0,
+    UPDATE = 5
 }
 
 #[derive(Debug, Clone)]
