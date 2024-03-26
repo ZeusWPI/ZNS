@@ -12,9 +12,11 @@ impl TryFrom<u16> for Type {
 
     fn try_from(value: u16) -> std::result::Result<Self, String> {
         match value {
+            //TODO: clean this up
             x if x == Type::A as u16 => Ok(Type::A),
             x if x == Type::OPT as u16 => Ok(Type::OPT),
             x if x == Type::SOA as u16 => Ok(Type::SOA),
+            x if x == Type::ANY as u16 => Ok(Type::ANY),
             _ => Err(format!("Invalid Type value: {}", value)),
         }
     }
@@ -26,6 +28,8 @@ impl TryFrom<u16> for Class {
     fn try_from(value: u16) -> std::result::Result<Self, String> {
         match value {
             x if x == Class::IN as u16 => Ok(Class::IN),
+            x if x == Class::ANY as u16 => Ok(Class::ANY),
+            x if x == Class::NONE as u16 => Ok(Class::NONE),
             _ => Err(format!("Invalid Class value: {}", value)),
         }
     }
@@ -90,8 +94,7 @@ impl Type {
                     })
                 }
             }
-            Type::SOA => todo!(),
-            Type::OPT => todo!(),
+            _ => todo!()
         }
     }
     pub fn from_data(&self, bytes: &[u8]) -> Result<String> {
@@ -107,8 +110,7 @@ impl Type {
                     })
                 }
             }
-            Type::SOA => todo!(),
-            Type::OPT => todo!(),
+            _ => todo!()
         }
     }
 }
@@ -246,7 +248,6 @@ impl FromBytes for Question {
 impl FromBytes for RR {
     fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
         let name = LabelString::from_bytes(bytes, i)?;
-        println!("{:#?}", name);
         if bytes.len() - *i < size_of::<Type>() + size_of::<Class>() + 6 {
             Err(ParseError {
                 object: String::from("RR"),

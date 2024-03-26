@@ -1,11 +1,12 @@
 use serde::Deserialize;
 
 #[repr(u16)]
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
 pub enum Type {
     A = 1,
     SOA = 6,
-    OPT = 41
+    OPT = 41,
+    ANY = 255
 }
 
 #[repr(u16)]

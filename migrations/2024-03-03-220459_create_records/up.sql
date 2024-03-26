@@ -7,5 +7,5 @@ CREATE TABLE records (
   rdlength INT NOT NULL,
   rdata BLOB NOT NULL,
 
-  PRIMARY KEY (name,type,class)
+  PRIMARY KEY (name,type,class,rdlength,rdata)
 )

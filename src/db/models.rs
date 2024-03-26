@@ -2,15 +2,15 @@ use crate::{
     errors::DatabaseError,
     structs::{Class, Question, Type, RR},
 };
-use diesel::prelude::*;
+use diesel::{dsl, prelude::*};
 
-use self::schema::records;
+use self::schema::records::{self};
 
 use super::lib::establish_connection;
 
 mod schema {
     diesel::table! {
-        records (name, _type, class) {
+        records (name, _type, class, rdlength, rdata) {
             name -> Text,
             #[sql_name = "type"]
             _type -> Integer,
@@ -39,8 +39,14 @@ impl Record {
         name: String,
         _type: i32,
         class: i32,
-    ) -> Result<Record, diesel::result::Error> {
-        records::table.find((name, _type, class)).get_result(db)
+    ) -> Result<Vec<Record>, diesel::result::Error> {
+        records::table
+            .filter(
+                records::name
+                    .eq(name)
+                    .and(records::_type.eq(_type).and(records::class.eq(class))),
+            )
+            .get_results(db)
     }
 
     pub fn create(
@@ -50,6 +56,28 @@ impl Record {
         diesel::insert_into(records::table)
             .values(&new_record)
             .execute(db)
+    }
+
+    pub fn delete(
+        db: &mut SqliteConnection,
+        name: String,
+        _type: Option<i32>,
+        class: i32,
+        rdata: Option<Vec<u8>>,
+    ) -> Result<usize, diesel::result::Error> {
+        let mut query = diesel::delete(records::table).into_boxed();
+
+        query = query.filter(records::name.eq(name).and(records::class.eq(class)));
+
+        if let Some(_type) = _type {
+            query = query.filter(records::_type.eq(_type));
+        }
+
+        if let Some(rdata) = rdata {
+            query = query.filter(records::rdata.eq(rdata));
+        }
+
+        query.execute(db)
     }
 }
 
@@ -71,9 +99,9 @@ pub async fn insert_into_database(rr: RR) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub async fn get_from_database(question: &Question) -> Result<RR, DatabaseError> {
+pub async fn get_from_database(question: &Question) -> Result<Vec<RR>, DatabaseError> {
     let db_connection = &mut establish_connection();
-    let record = Record::get(
+    let records = Record::get(
         db_connection,
         question.qname.join("."),
         question.qtype.clone() as i32,
@@ -83,12 +111,32 @@ pub async fn get_from_database(question: &Question) -> Result<RR, DatabaseError>
         message: e.to_string(),
     })?;
 
-    Ok(RR {
-        name: record.name.split(".").map(str::to_string).collect(),
-        _type: Type::try_from(record._type as u16).map_err(|e| DatabaseError { message: e })?,
-        class: Class::try_from(record.class as u16).map_err(|e| DatabaseError { message: e })?,
-        ttl: record.ttl,
-        rdlength: record.rdlength as u16,
-        rdata: record.rdata,
-    })
+    Ok(records
+        .into_iter()
+        .filter_map(|record| {
+            Some(RR {
+                name: record.name.split(".").map(str::to_string).collect(),
+                _type: Type::try_from(record._type as u16)
+                    .map_err(|e| DatabaseError { message: e })
+                    .ok()?,
+                class: Class::try_from(record.class as u16)
+                    .map_err(|e| DatabaseError { message: e })
+                    .ok()?,
+                ttl: record.ttl,
+                rdlength: record.rdlength as u16,
+                rdata: record.rdata,
+            })
+        })
+        .collect())
+}
+
+//TODO: cleanup models
+pub async fn delete_from_database(
+    name: Vec<String>,
+    _type: Option<Type>,
+    class: Class,
+    rdata: Option<Vec<u8>>,
+) {
+    let db_connection = &mut establish_connection();
+    let _ = Record::delete(db_connection, name.join("."), _type.map(|f| f as i32), class as i32, rdata);
 }

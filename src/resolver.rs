@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
-use crate::db::models::{get_from_database, insert_into_database};
+use crate::db::models::{delete_from_database, get_from_database, insert_into_database};
 use crate::errors::ParseError;
 use crate::parser::FromBytes;
 use crate::structs::{Class, Header, Message, Opcode, Type, RCODE};
@@ -25,13 +25,13 @@ async fn handle_query(message: Message) -> Message {
     response.header.arcount = 0; //TODO: fix this, handle unknown class values
 
     for question in message.question {
-        let answer = get_from_database(&question).await;
+        let answers = get_from_database(&question).await;
 
-        match answer {
-            Ok(rr) => {
+        match answers {
+            Ok(rrs) => {
                 response.header.flags = set_response_flags(response.header.flags, RCODE::NOERROR);
                 response.header.ancount = 1;
-                response.answer = vec![rr]
+                response.answer = rrs
             }
             Err(e) => {
                 response.header.flags = set_response_flags(response.header.flags, RCODE::NXDOMAIN);
@@ -81,22 +81,34 @@ async fn handle_update(message: Message) -> Message {
 
         if (rr.class == Class::ANY && (rr.ttl != 0 || rr.rdlength != 0))
             || (rr.class == Class::NONE && rr.ttl != 0)
-            || rr.class != zone.qclass
+            || ![Class::NONE, Class::ANY, zone.qclass.clone()].contains(&rr.class)
         {
             response.header.flags = set_response_flags(response.header.flags, RCODE::FORMERR);
             return response;
         }
     }
 
+    //FIX: with nsupdate delete, I get `dns_request_getresponse: unexpected end of input`
     for rr in message.authority {
         if rr.class == zone.qclass {
-            insert_into_database(rr).await;
+            let _ = insert_into_database(rr).await;
         } else if rr.class == Class::ANY {
-            response.header.flags = set_response_flags(response.header.flags, RCODE::NOTIMP);
-            return response;
-        } else if rr.class == Class::ANY {
-            response.header.flags = set_response_flags(response.header.flags, RCODE::NOTIMP);
-            return response;
+            if rr._type == Type::ANY {
+                if rr.name == zone.qname {
+                    response.header.flags =
+                        set_response_flags(response.header.flags, RCODE::NOTIMP);
+                    return response;
+                } else {
+                    delete_from_database(rr.name, None, Class::IN, None).await;
+                }
+            } else {
+                delete_from_database(rr.name, Some(rr._type), Class::IN, None).await;
+            }
+        } else if rr.class == Class::NONE {
+            if rr._type == Type::SOA {
+                continue;
+            }
+            delete_from_database(rr.name, Some(rr._type),Class::IN, Some(rr.rdata)).await;
         }
     }
 
