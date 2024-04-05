@@ -1,23 +1,39 @@
 use serde::Deserialize;
 
-#[repr(u16)]
+
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 pub enum Type {
+    Type(RRType),
+    Other(u16)
+}
+
+#[repr(u16)]
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub enum RRType {
     A = 1,
     SOA = 6,
+    KEY = 24,
     OPT = 41,
-    ANY = 255
+    ANY = 255,
+}
+
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Class {
+    Class(RRClass),
+    Other(u16)
 }
 
 #[repr(u16)]
 #[derive(Debug, Clone, PartialEq)]
-pub enum Class {
+pub enum RRClass {
     IN = 1,
     NONE = 254,
-    ANY = 255
+    ANY = 255,
 }
 
 #[repr(u16)]
+#[allow(dead_code)]
 pub enum RCODE {
     NOERROR = 0,
     FORMERR = 1,
@@ -83,6 +99,14 @@ pub struct OptRR {
 pub type LabelString = Vec<String>;
 
 #[derive(Debug)]
-pub struct Response {
-    field: Type,
+pub struct KeyRData {
+    pub type_covered: u16,
+    pub algo: u8,
+    pub labels: u8,
+    pub original_ttl: u32,
+    pub signature_expiration: u32,
+    pub signature_inception: u32,
+    pub key_tag: u16,
+    pub signer: LabelString,
+    pub signature: Vec<u8>
 }

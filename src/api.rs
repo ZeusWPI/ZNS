@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tokio::net::TcpListener;
 
 use crate::db::models::insert_into_database;
-use crate::structs::{Class, Type, RR};
+use crate::structs::{Class, RRClass, Type, RR};
 
 type GenericError = Box<dyn std::error::Error + Send + Sync>;
 type Result<T> = std::result::Result<T, GenericError>;
@@ -41,7 +41,7 @@ async fn create_record(req: Request<hyper::body::Incoming>) -> Result<Response<B
             match insert_into_database(RR {
                 name: record.name,
                 _type: record._type,
-                class: Class::IN,
+                class: Class::Class(RRClass::IN),
                 ttl: record.ttl,
                 rdlength: rdata.len() as u16,
                 rdata,

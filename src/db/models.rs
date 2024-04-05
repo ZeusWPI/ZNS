@@ -85,8 +85,8 @@ pub async fn insert_into_database(rr: RR) -> Result<(), DatabaseError> {
     let db_connection = &mut establish_connection();
     let record = Record {
         name: rr.name.join("."),
-        _type: rr._type as i32,
-        class: rr.class as i32,
+        _type: rr._type.into(),
+        class: rr.class.into(),
         ttl: rr.ttl,
         rdlength: rr.rdlength as i32,
         rdata: rr.rdata,
@@ -104,8 +104,8 @@ pub async fn get_from_database(question: &Question) -> Result<Vec<RR>, DatabaseE
     let records = Record::get(
         db_connection,
         question.qname.join("."),
-        question.qtype.clone() as i32,
-        question.qclass.clone() as i32,
+        question.qtype.clone().into(),
+        question.qclass.clone().into(),
     )
     .map_err(|e| DatabaseError {
         message: e.to_string(),
@@ -116,12 +116,8 @@ pub async fn get_from_database(question: &Question) -> Result<Vec<RR>, DatabaseE
         .filter_map(|record| {
             Some(RR {
                 name: record.name.split(".").map(str::to_string).collect(),
-                _type: Type::try_from(record._type as u16)
-                    .map_err(|e| DatabaseError { message: e })
-                    .ok()?,
-                class: Class::try_from(record.class as u16)
-                    .map_err(|e| DatabaseError { message: e })
-                    .ok()?,
+                _type: Type::from(record._type as u16),
+                class: Class::from(record.class as u16),
                 ttl: record.ttl,
                 rdlength: record.rdlength as u16,
                 rdata: record.rdata,
@@ -138,5 +134,5 @@ pub async fn delete_from_database(
     rdata: Option<Vec<u8>>,
 ) {
     let db_connection = &mut establish_connection();
-    let _ = Record::delete(db_connection, name.join("."), _type.map(|f| f as i32), class as i32, rdata);
+    let _ = Record::delete(db_connection, name.join("."), _type.map(|f| f.into()), class.into(), rdata);
 }
