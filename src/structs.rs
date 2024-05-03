@@ -1,14 +1,11 @@
-use serde::Deserialize;
-
-
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Type(RRType),
-    Other(u16)
+    Other(u16),
 }
 
 #[repr(u16)]
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum RRType {
     A = 1,
     SOA = 6,
@@ -17,11 +14,10 @@ pub enum RRType {
     ANY = 255,
 }
 
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Class {
     Class(RRClass),
-    Other(u16)
+    Other(u16),
 }
 
 #[repr(u16)]
@@ -45,17 +41,17 @@ pub enum RCODE {
     YXRRSET = 7,
     NXRRSET = 8,
     NOTAUTH = 9,
-    NOTZONE = 10
+    NOTZONE = 10,
 }
 
 pub enum Opcode {
     QUERY = 0,
-    UPDATE = 5
+    UPDATE = 5,
 }
 
 #[derive(Debug, Clone)]
 pub struct Question {
-    pub qname: Vec<String>,
+    pub qname: LabelString,
     pub qtype: Type,   // NOTE: should be QTYPE, right now not really needed
     pub qclass: Class, //NOTE: should be QCLASS, right now not really needed
 }
@@ -81,7 +77,7 @@ pub struct Message {
 
 #[derive(Debug, Clone)]
 pub struct RR {
-    pub name: Vec<String>,
+    pub name: LabelString,
     pub _type: Type,
     pub class: Class,
     pub ttl: i32,
@@ -93,7 +89,7 @@ pub struct RR {
 pub struct OptRR {
     pub code: u16,
     pub length: u16,
-    pub rdata: Vec<u8>
+    pub rdata: Vec<u8>,
 }
 
 pub type LabelString = Vec<String>;
@@ -108,5 +104,5 @@ pub struct KeyRData {
     pub signature_inception: u32,
     pub key_tag: u16,
     pub signer: LabelString,
-    pub signature: Vec<u8>
+    pub signature: Vec<u8>,
 }

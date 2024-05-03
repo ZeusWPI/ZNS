@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
+use crate::auth::verify;
 use crate::db::models::{delete_from_database, get_from_database, insert_into_database};
 use crate::errors::ParseError;
 use crate::parser::FromBytes;
@@ -69,8 +70,14 @@ async fn handle_update(message: Message) -> Message {
     // Check Requestor Permission
     for rr in &message.additional {
         if rr._type == Type::Type(RRType::KEY) {
-            let key = KeyRData::from_bytes(&rr.rdata, &mut 0).unwrap();
-            println!("{:#?}",key);
+            let mut data = message.clone();
+            data.header.arcount -= 1;
+            data.additional = vec![data.additional[0].clone()];
+            let mut i = 0;
+            let key = KeyRData::from_bytes(&rr.rdata, &mut i).unwrap();
+            let mut bytes = rr.rdata[0..i].to_vec();
+            bytes.extend(Message::to_bytes(data).to_vec());
+            let _ = verify(String::from("xander"), &key.signature, &bytes.as_slice());
         }
     }
 
@@ -169,6 +176,8 @@ pub async fn resolver_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Erro
         let socket = socket_shared.clone();
         tokio::spawn(async move {
             let response = get_response(&data[..len]).await;
+            println!("{:?}",Message::to_bytes(Message::from_bytes(&data[..len], &mut 0).unwrap()));
+            println!("{:?}",&data[..len]);
             let _ = socket
                 .send_to(Message::to_bytes(response).as_slice(), addr)
                 .await;

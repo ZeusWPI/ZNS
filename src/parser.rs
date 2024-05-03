@@ -3,7 +3,7 @@ use std::{mem::size_of, vec};
 use crate::{
     errors::ParseError,
     structs::{
-        Class, Header, KeyRData, LabelString, Message, Opcode, OptRR, Question, RRClass, RRType,
+        Class, Header, KeyRData, LabelString, Message, Opcode, Question, RRClass, RRType,
         Type, RR,
     },
 };
@@ -85,27 +85,6 @@ pub trait FromBytes {
         Self: Sized;
 }
 
-pub fn parse_opt_type(bytes: &[u8]) -> Result<Vec<OptRR>> {
-    let mut pairs: Vec<OptRR> = vec![];
-    let mut i: usize = 0;
-    while i + 4 <= bytes.len() {
-        let length = u16::from_be_bytes(bytes[i + 2..i + 4].try_into().unwrap());
-        pairs.push(OptRR {
-            code: u16::from_be_bytes(bytes[i..i + 2].try_into().unwrap()),
-            length,
-            rdata: bytes[i + 4..i + 4 + length as usize]
-                .try_into()
-                .map_err(|_| ParseError {
-                    object: String::from("Type::OPT"),
-                    message: String::from("Invalid OPT DATA"),
-                })?,
-        });
-        i += 4 + length as usize;
-    }
-
-    Ok(pairs)
-}
-
 impl Type {
     pub fn to_data(&self, text: &String) -> Result<Vec<u8>> {
         match self {
@@ -180,34 +159,35 @@ impl FromBytes for Header {
 
 impl FromBytes for LabelString {
     fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
-        let mut qname = vec![];
+        let mut out = vec![];
 
         // Parse qname labels
         while bytes[*i] != 0
             && (bytes[*i] & 0b11000000 == 0)
             && bytes[*i] as usize + *i < bytes.len()
         {
-            qname.push(
+            out.push(
                 String::from_utf8(bytes[*i + 1..bytes[*i] as usize + 1 + *i].to_vec()).unwrap(),
             );
             *i += bytes[*i] as usize + 1;
         }
 
         if bytes[*i] & 0b11000000 != 0 {
-            let offset = u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()) & 0b00111111;
+            println!("YOOW");
+            let offset = u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()) & 0b0011111111111111;
             if *i <= offset as usize {
                 return Err(ParseError {
                     object: String::from("Label"),
                     message: String::from("Invalid PTR"),
                 });
             } else {
-                qname.extend(LabelString::from_bytes(bytes, &mut (offset as usize))?);
+                out.extend(LabelString::from_bytes(bytes, &mut (offset as usize))?);
                 *i += 1;
             }
         }
 
         *i += 1;
-        Ok(qname)
+        Ok(out)
     }
 
     fn to_bytes(name: Self) -> Vec<u8> {
@@ -307,7 +287,7 @@ impl FromBytes for RR {
         result.extend(u16::to_be_bytes(rr._type.into()));
         result.extend(u16::to_be_bytes(rr.class.into()));
         result.extend(i32::to_be_bytes(rr.ttl.to_owned()));
-        result.extend(u16::to_be_bytes(4 as u16));
+        result.extend(u16::to_be_bytes(rr.rdata.len() as u16));
         result.extend(rr.rdata);
         result
     }
@@ -370,14 +350,14 @@ impl FromBytes for Message {
 }
 
 impl FromBytes for KeyRData {
-    fn from_bytes(bytes: &[u8], _: &mut usize) -> Result<Self> {
+    fn from_bytes(bytes: &[u8], i: &mut usize) -> Result<Self> {
         if bytes.len() < 18 {
             Err(ParseError {
                 object: String::from("KeyRData"),
                 message: String::from("invalid rdata"),
             })
         } else {
-            let mut i = 18;
+            *i = 18;
             Ok(KeyRData {
                 type_covered: u16::from_be_bytes(bytes[0..2].try_into().unwrap()),
                 algo: bytes[2],
@@ -386,8 +366,8 @@ impl FromBytes for KeyRData {
                 signature_expiration: u32::from_be_bytes(bytes[8..12].try_into().unwrap()),
                 signature_inception: u32::from_be_bytes(bytes[12..16].try_into().unwrap()),
                 key_tag: u16::from_be_bytes(bytes[16..18].try_into().unwrap()),
-                signer: LabelString::from_bytes(bytes, &mut i)?,
-                signature: bytes[i..bytes.len()].to_vec(),
+                signer: LabelString::from_bytes(bytes, i)?,
+                signature: bytes[*i..bytes.len()].to_vec(),
             })
         }
     }
