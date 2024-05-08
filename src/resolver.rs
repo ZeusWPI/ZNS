@@ -44,11 +44,13 @@ async fn handle_query(message: Message) -> Message {
     response
 }
 
-async fn handle_update(message: Message) -> Message {
+async fn handle_update(message: Message, bytes: &[u8]) -> Message {
     let mut response = message.clone();
 
     // Zone section (question) processing
-    if (message.header.qdcount != 1) || !matches!(message.question[0].qtype, Type::Type(RRType::SOA)) {
+    if (message.header.qdcount != 1)
+        || !matches!(message.question[0].qtype, Type::Type(RRType::SOA))
+    {
         response.header.flags = set_response_flags(response.header.flags, RCODE::FORMERR);
         return response;
     }
@@ -62,23 +64,27 @@ async fn handle_update(message: Message) -> Message {
     }
 
     // Check Prerequisite    TODO: implement this
-    // if message.header.ancount > 0 {
-    //     response.header.flags = set_response_flags(response.header.flags, RCODE::NOTIMP);
-    //     return response;
-    // }
 
-    // Check Requestor Permission
-    for rr in &message.additional {
-        if rr._type == Type::Type(RRType::KEY) {
-            let mut data = message.clone();
-            data.header.arcount -= 1;
-            data.additional = vec![data.additional[0].clone()];
-            let mut i = 0;
-            let key = KeyRData::from_bytes(&rr.rdata, &mut i).unwrap();
-            let mut bytes = rr.rdata[0..i].to_vec();
-            bytes.extend(Message::to_bytes(data).to_vec());
-            let _ = verify(String::from("xander"), &key.signature, &bytes.as_slice());
+    //TODO: this code is ugly
+    let last = message.additional.last();
+    if last.is_some() && last.unwrap()._type == Type::Type(RRType::KEY) {
+        let rr = last.unwrap();
+        let mut request = bytes[0..bytes.len() - 11 - rr.rdlength as usize].to_vec();
+        request[11] -= 1; // Decrease arcount
+
+        let mut i = 0;
+        let key = KeyRData::from_bytes(&rr.rdata, &mut i).unwrap();
+
+        let mut data = rr.rdata[0..i].to_vec();
+        data.extend(request);
+
+        if !verify(&key.signature, &data.as_slice()) {
+            response.header.flags = set_response_flags(response.header.flags, RCODE::NOTAUTH);
+            return response;
         }
+    } else {
+        response.header.flags = set_response_flags(response.header.flags, RCODE::NOTAUTH);
+        return response;
     }
 
     // Update Section Prescan
@@ -93,14 +99,18 @@ async fn handle_update(message: Message) -> Message {
 
         if (rr.class == Class::Class(RRClass::ANY) && (rr.ttl != 0 || rr.rdlength != 0))
             || (rr.class == Class::Class(RRClass::NONE) && rr.ttl != 0)
-            || ![Class::Class(RRClass::NONE), Class::Class(RRClass::ANY), zone.qclass.clone()].contains(&rr.class)
+            || ![
+                Class::Class(RRClass::NONE),
+                Class::Class(RRClass::ANY),
+                zone.qclass.clone(),
+            ]
+            .contains(&rr.class)
         {
             response.header.flags = set_response_flags(response.header.flags, RCODE::FORMERR);
             return response;
         }
     }
 
-    //FIX: with nsupdate delete, I get `dns_request_getresponse: unexpected end of input`
     for rr in message.authority {
         if rr.class == zone.qclass {
             let _ = insert_into_database(rr).await;
@@ -114,13 +124,20 @@ async fn handle_update(message: Message) -> Message {
                     delete_from_database(rr.name, None, Class::Class(RRClass::IN), None).await;
                 }
             } else {
-                delete_from_database(rr.name, Some(rr._type), Class::Class(RRClass::IN), None).await;
+                delete_from_database(rr.name, Some(rr._type), Class::Class(RRClass::IN), None)
+                    .await;
             }
         } else if rr.class == Class::Class(RRClass::NONE) {
             if rr._type == Type::Type(RRType::SOA) {
                 continue;
             }
-            delete_from_database(rr.name, Some(rr._type), Class::Class(RRClass::IN), Some(rr.rdata)).await;
+            delete_from_database(
+                rr.name,
+                Some(rr._type),
+                Class::Class(RRClass::IN),
+                Some(rr.rdata),
+            )
+            .await;
         }
     }
 
@@ -160,7 +177,7 @@ async fn get_response(bytes: &[u8]) -> Message {
         Ok(message) => match get_opcode(&message.header.flags) {
             Ok(opcode) => match opcode {
                 Opcode::QUERY => handle_query(message).await,
-                Opcode::UPDATE => handle_update(message).await,
+                Opcode::UPDATE => handle_update(message, bytes).await,
             },
             Err(_) => todo!(),
         },
@@ -176,8 +193,6 @@ pub async fn resolver_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Erro
         let socket = socket_shared.clone();
         tokio::spawn(async move {
             let response = get_response(&data[..len]).await;
-            println!("{:?}",Message::to_bytes(Message::from_bytes(&data[..len], &mut 0).unwrap()));
-            println!("{:?}",&data[..len]);
             let _ = socket
                 .send_to(Message::to_bytes(response).as_slice(), addr)
                 .await;

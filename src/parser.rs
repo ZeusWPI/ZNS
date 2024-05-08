@@ -173,7 +173,6 @@ impl FromBytes for LabelString {
         }
 
         if bytes[*i] & 0b11000000 != 0 {
-            println!("YOOW");
             let offset = u16::from_be_bytes(bytes[*i..*i + 2].try_into().unwrap()) & 0b0011111111111111;
             if *i <= offset as usize {
                 return Err(ParseError {
@@ -301,8 +300,6 @@ impl FromBytes for Message {
         for _ in 0..header.qdcount {
             question.push(Question::from_bytes(&bytes, i)?);
         }
-        println!("{:#?}", question);
-        println!("{:#?}", header);
 
         let mut answer = vec![];
         for _ in 0..header.ancount {
@@ -313,7 +310,6 @@ impl FromBytes for Message {
         for _ in 0..header.nscount {
             authority.push(RR::from_bytes(&bytes, i)?);
         }
-        println!("{:#?}", authority);
 
         let mut additional = vec![];
         for _ in 0..header.arcount {
