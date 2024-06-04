@@ -368,7 +368,7 @@ impl FromBytes for KeyRData {
         }
     }
 
-    fn to_bytes(s: Self) -> Vec<u8>
+    fn to_bytes(_: Self) -> Vec<u8>
     where
         Self: Sized,
     {

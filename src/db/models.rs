@@ -2,7 +2,7 @@ use crate::{
     errors::DatabaseError,
     structs::{Class, Question, Type, RR},
 };
-use diesel::{dsl, prelude::*};
+use diesel::prelude::*;
 
 use self::schema::records::{self};
 

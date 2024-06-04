@@ -33,3 +33,14 @@ impl fmt::Display for DatabaseError {
         write!(f, "Database Error: {}", self.message)
     }
 }
+
+#[derive(Debug)]
+pub struct AuthenticationError {
+    pub message: String,
+}
+
+impl fmt::Display for AuthenticationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Authentication Error: {}", self.message)
+    }
+}

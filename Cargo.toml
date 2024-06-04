@@ -8,7 +8,6 @@ edition = "2021"
 diesel = { version = "2.1.4", features = ["sqlite"] }
 dotenvy = "0.15"
 tokio = {version = "1.36.0", features = ["macros","rt-multi-thread","net"], default-features = false}
-sshkeys = "0.3.2"
 ring = "0.17.8"
 base64 = "0.22.0"
-ed25519-dalek = "2.1.1"
+reqwest = {version = "0.12.4", features = ["json","default"]}

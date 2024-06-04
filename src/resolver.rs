@@ -4,11 +4,12 @@ use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
-use crate::auth::verify;
+use crate::authenticate::authenticate;
 use crate::db::models::{delete_from_database, get_from_database, insert_into_database};
 use crate::errors::ParseError;
 use crate::parser::FromBytes;
-use crate::structs::{Class, Header, KeyRData, Message, Opcode, RRClass, RRType, Type, RCODE};
+use crate::sig::Sig;
+use crate::structs::{Class, Header, Message, Opcode, RRClass, RRType, Type, RCODE};
 use crate::utils::vec_equal;
 
 const MAX_DATAGRAM_SIZE: usize = 4096;
@@ -68,17 +69,9 @@ async fn handle_update(message: Message, bytes: &[u8]) -> Message {
     //TODO: this code is ugly
     let last = message.additional.last();
     if last.is_some() && last.unwrap()._type == Type::Type(RRType::KEY) {
-        let rr = last.unwrap();
-        let mut request = bytes[0..bytes.len() - 11 - rr.rdlength as usize].to_vec();
-        request[11] -= 1; // Decrease arcount
+        let sig = Sig::new(last.unwrap(), bytes);
 
-        let mut i = 0;
-        let key = KeyRData::from_bytes(&rr.rdata, &mut i).unwrap();
-
-        let mut data = rr.rdata[0..i].to_vec();
-        data.extend(request);
-
-        if !verify(&key.signature, &data.as_slice()) {
+        if !authenticate(&sig, &zone.qname).await.is_ok_and(|x| x) {
             response.header.flags = set_response_flags(response.header.flags, RCODE::NOTAUTH);
             return response;
         }
