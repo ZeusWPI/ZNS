@@ -8,6 +8,7 @@ use crate::authenticate::authenticate;
 use crate::db::models::{delete_from_database, get_from_database, insert_into_database};
 use crate::errors::ParseError;
 use crate::parser::FromBytes;
+use crate::reader::Reader;
 use crate::sig::Sig;
 use crate::structs::{Class, Header, Message, Opcode, RRClass, RRType, Type, RCODE};
 use crate::utils::vec_equal;
@@ -140,7 +141,8 @@ async fn handle_update(message: Message, bytes: &[u8]) -> Message {
 
 fn handle_parse_error(bytes: &[u8], err: ParseError) -> Message {
     eprintln!("{}", err);
-    let mut header = Header::from_bytes(bytes, &mut 0).unwrap_or(Header {
+    let mut reader = Reader::new(bytes);
+    let mut header = Header::from_bytes(&mut reader).unwrap_or(Header {
         id: 0,
         flags: 0,
         qdcount: 0,
@@ -165,8 +167,8 @@ fn handle_parse_error(bytes: &[u8], err: ParseError) -> Message {
 }
 
 async fn get_response(bytes: &[u8]) -> Message {
-    let mut i: usize = 0;
-    match Message::from_bytes(bytes, &mut i) {
+    let mut reader = Reader::new(bytes);
+    match Message::from_bytes(&mut reader) {
         Ok(message) => match get_opcode(&message.header.flags) {
             Ok(opcode) => match opcode {
                 Opcode::QUERY => handle_query(message).await,

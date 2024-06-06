@@ -2,6 +2,7 @@ use base64::prelude::*;
 
 use crate::{
     parser::FromBytes,
+    reader::Reader,
     structs::{KeyRData, RR},
 };
 
@@ -19,10 +20,10 @@ impl Sig {
         let mut request = datagram[0..datagram.len() - 11 - rr.rdlength as usize].to_vec();
         request[11] -= 1; // Decrease arcount
 
-        let mut i = 0;
-        let key_rdata = KeyRData::from_bytes(&rr.rdata, &mut i).unwrap();
+        let mut reader = Reader::new(&rr.rdata);
+        let key_rdata = KeyRData::from_bytes(&mut reader).unwrap();
 
-        let mut raw_data = rr.rdata[0..i].to_vec();
+        let mut raw_data = rr.rdata[0..rr.rdata.len() - key_rdata.signature.len()].to_vec();
         raw_data.extend(request);
 
         Sig {
