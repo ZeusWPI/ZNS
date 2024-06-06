@@ -1,6 +1,7 @@
 use base64::prelude::*;
 
 use crate::{
+    errors::ParseError,
     parser::FromBytes,
     reader::Reader,
     structs::{KeyRData, RR},
@@ -16,20 +17,20 @@ pub enum PublicKey {
 }
 
 impl Sig {
-    pub fn new(rr: &RR, datagram: &[u8]) -> Sig {
+    pub fn new(rr: &RR, datagram: &[u8]) -> Result<Sig, ParseError> {
         let mut request = datagram[0..datagram.len() - 11 - rr.rdlength as usize].to_vec();
         request[11] -= 1; // Decrease arcount
 
         let mut reader = Reader::new(&rr.rdata);
-        let key_rdata = KeyRData::from_bytes(&mut reader).unwrap();
+        let key_rdata = KeyRData::from_bytes(&mut reader)?;
 
         let mut raw_data = rr.rdata[0..rr.rdata.len() - key_rdata.signature.len()].to_vec();
         raw_data.extend(request);
 
-        Sig {
+        Ok(Sig {
             raw_data,
             key_rdata,
-        }
+        })
     }
 
     fn verify_ed25519(&self, key: String) -> bool {

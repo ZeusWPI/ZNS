@@ -1,8 +1,10 @@
 use core::fmt;
 
-#[derive(Debug)]
+use crate::structs::RCODE;
+
 pub struct DNSError {
     pub message: String,
+    pub rcode: RCODE
 }
 
 impl fmt::Display for DNSError {
@@ -25,7 +27,7 @@ impl fmt::Display for ParseError {
 
 #[derive(Debug)]
 pub struct DatabaseError {
-    pub message: String,
+    pub message: String
 }
 
 impl fmt::Display for DatabaseError {
@@ -64,6 +66,18 @@ where
         ParseError {
             object: String::from("Reader"),
             message: value.into().to_string(),
+        }
+    }
+}
+
+impl<E> From<E> for DNSError
+where
+    E: Into<ParseError>,
+{
+    fn from(value: E) -> Self {
+        DNSError {
+            message: value.into().to_string(),
+            rcode: RCODE::FORMERR
         }
     }
 }

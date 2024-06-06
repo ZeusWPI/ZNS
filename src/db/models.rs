@@ -81,15 +81,15 @@ impl Record {
     }
 }
 
-pub async fn insert_into_database(rr: RR) -> Result<(), DatabaseError> {
+pub async fn insert_into_database(rr: &RR) -> Result<(), DatabaseError> {
     let db_connection = &mut establish_connection();
     let record = Record {
         name: rr.name.join("."),
-        _type: rr._type.into(),
-        class: rr.class.into(),
+        _type: rr._type.clone().into(),
+        class: rr.class.clone().into(),
         ttl: rr.ttl,
         rdlength: rr.rdlength as i32,
-        rdata: rr.rdata,
+        rdata: rr.rdata.clone(),
     };
 
     Record::create(db_connection, record).map_err(|e| DatabaseError {
@@ -128,11 +128,17 @@ pub async fn get_from_database(question: &Question) -> Result<Vec<RR>, DatabaseE
 
 //TODO: cleanup models
 pub async fn delete_from_database(
-    name: Vec<String>,
+    name: &Vec<String>,
     _type: Option<Type>,
     class: Class,
     rdata: Option<Vec<u8>>,
 ) {
     let db_connection = &mut establish_connection();
-    let _ = Record::delete(db_connection, name.join("."), _type.map(|f| f.into()), class.into(), rdata);
+    let _ = Record::delete(
+        db_connection,
+        name.join("."),
+        _type.map(|f| f.into()),
+        class.into(),
+        rdata,
+    );
 }
