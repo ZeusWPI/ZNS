@@ -1,8 +1,6 @@
-use std::env;
-
 use reqwest::Error;
 
-use crate::errors::AuthenticationError;
+use crate::{config::Config, errors::AuthenticationError};
 
 use super::sig::{PublicKey, Sig};
 
@@ -38,11 +36,12 @@ pub(super) async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool> 
 }
 
 async fn get_keys(username: &String) -> std::result::Result<SSHKeys, Error> {
-    let zauth_url = env::var("ZAUTH_URL").expect("ZAUTH_URL must be set");
-    Ok(
-        reqwest::get(format!("{}/users/keys/{}", zauth_url, username))
-            .await?
-            .json::<SSHKeys>()
-            .await?,
-    )
+    Ok(reqwest::get(format!(
+        "{}/users/keys/{}",
+        Config::get().zauth_url,
+        username
+    ))
+    .await?
+    .json::<SSHKeys>()
+    .await?)
 }
