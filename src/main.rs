@@ -4,13 +4,13 @@ use dotenvy::dotenv;
 
 use crate::resolver::resolver_listener_loop;
 
-mod authenticate;
 mod db;
 mod errors;
+mod handlers;
+mod message;
 mod parser;
 mod reader;
 mod resolver;
-mod sig;
 mod structs;
 mod utils;
 

@@ -7,12 +7,12 @@ use crate::{
     structs::{KeyRData, RR},
 };
 
-pub struct Sig {
+pub(super) struct Sig {
     raw_data: Vec<u8>,
     key_rdata: KeyRData,
 }
 
-pub enum PublicKey {
+pub(super) enum PublicKey {
     ED25519(String),
 }
 

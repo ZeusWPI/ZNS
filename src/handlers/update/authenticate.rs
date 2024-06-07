@@ -2,16 +2,15 @@ use std::env;
 
 use reqwest::Error;
 
-use crate::{
-    errors::AuthenticationError,
-    sig::{PublicKey, Sig},
-};
+use crate::errors::AuthenticationError;
+
+use super::sig::{PublicKey, Sig};
 
 type SSHKeys = Vec<String>;
 
 type Result<T> = std::result::Result<T, AuthenticationError>;
 
-pub async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool> {
+pub(super) async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool> {
     if zone.len() >= 4 {
         let username = &zone[zone.len() - 4]; // Should match: username.users.zeus.gent
         let public_keys = get_keys(username).await.map_err(|e| AuthenticationError {
