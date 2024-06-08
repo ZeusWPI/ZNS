@@ -35,7 +35,7 @@ struct Record {
 
 impl Record {
     pub fn get(
-        db: &mut SqliteConnection,
+        db: &mut PgConnection,
         name: String,
         _type: i32,
         class: i32,
@@ -50,7 +50,7 @@ impl Record {
     }
 
     pub fn create(
-        db: &mut SqliteConnection,
+        db: &mut PgConnection,
         new_record: Record,
     ) -> Result<usize, diesel::result::Error> {
         diesel::insert_into(records::table)
@@ -59,7 +59,7 @@ impl Record {
     }
 
     pub fn delete(
-        db: &mut SqliteConnection,
+        db: &mut PgConnection,
         name: String,
         _type: Option<i32>,
         class: i32,

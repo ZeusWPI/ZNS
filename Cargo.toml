@@ -5,7 +5,7 @@ edition = "2021"
 
 
 [dependencies]
-diesel = { version = "2.1.4", features = ["sqlite"] }
+diesel = { version = "2.1.4", features = ["postgres"] }
 dotenvy = "0.15"
 tokio = {version = "1.36.0", features = ["macros","rt-multi-thread","net"], default-features = false}
 ring = "0.17.8"

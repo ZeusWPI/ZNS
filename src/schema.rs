@@ -4,10 +4,10 @@ diesel::table! {
     records (name, type_, class, rdlength, rdata) {
         name -> Text,
         #[sql_name = "type"]
-        type_ -> Integer,
-        class -> Integer,
-        ttl -> Integer,
-        rdlength -> Integer,
-        rdata -> Binary,
+        type_ -> Int4,
+        class -> Int4,
+        ttl -> Int4,
+        rdlength -> Int4,
+        rdata -> Bytea,
     }
 }

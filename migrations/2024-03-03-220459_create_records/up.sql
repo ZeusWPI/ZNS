@@ -5,7 +5,7 @@ CREATE TABLE records (
   class INT NOT NULL,
   ttl INT NOT NULL,
   rdlength INT NOT NULL,
-  rdata BLOB NOT NULL,
+  rdata BYTEA NOT NULL,
 
   PRIMARY KEY (name,type,class,rdlength,rdata)
 )
