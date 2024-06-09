@@ -14,7 +14,12 @@ impl ResponseHandler for QueryHandler {
         response.header.arcount = 0; //TODO: fix this, handle unknown class values
 
         for question in &message.question {
-            let answers = get_from_database(&question).await;
+            let answers = get_from_database(
+                &question.qname,
+                question.qtype.clone(),
+                question.qclass.clone(),
+            )
+            .await;
 
             match answers {
                 Ok(rrs) => {

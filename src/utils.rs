@@ -1,4 +1,3 @@
-
 pub fn vec_equal<T: PartialEq>(vec1: &[T], vec2: &[T]) -> bool {
     if vec1.len() != vec2.len() {
         return false;

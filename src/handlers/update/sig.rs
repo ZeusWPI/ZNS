@@ -12,10 +12,6 @@ pub(super) struct Sig {
     key_rdata: KeyRData,
 }
 
-pub(super) enum PublicKey {
-    ED25519(String),
-}
-
 impl Sig {
     pub fn new(rr: &RR, datagram: &[u8]) -> Result<Sig, ParseError> {
         let mut request = datagram[0..datagram.len() - 11 - rr.rdlength as usize].to_vec();
@@ -33,7 +29,16 @@ impl Sig {
         })
     }
 
-    fn verify_ed25519(&self, key: String) -> bool {
+    pub fn verify_ed25519(&self, key: &str) -> bool {
+        let blob = BASE64_STANDARD.decode(key).unwrap();
+
+        let pkey = ring::signature::UnparsedPublicKey::new(&ring::signature::ED25519, &blob);
+
+        pkey.verify(&self.raw_data, &self.key_rdata.signature)
+            .is_ok()
+    }
+
+    pub fn verify_ssh_ed25519(&self, key: &str) -> bool {
         let blob = BASE64_STANDARD.decode(key).unwrap();
 
         let pkey = ring::signature::UnparsedPublicKey::new(
@@ -43,11 +48,5 @@ impl Sig {
 
         pkey.verify(&self.raw_data, &self.key_rdata.signature)
             .is_ok()
-    }
-
-    pub fn verify(&self, key: PublicKey) -> bool {
-        match key {
-            PublicKey::ED25519(pkey) => self.verify_ed25519(pkey),
-        }
     }
 }

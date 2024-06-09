@@ -10,6 +10,7 @@ use self::sig::Sig;
 use super::ResponseHandler;
 
 mod authenticate;
+mod dnskey;
 mod sig;
 
 pub(super) struct UpdateHandler {}

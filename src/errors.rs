@@ -4,7 +4,7 @@ use crate::structs::RCODE;
 
 pub struct DNSError {
     pub message: String,
-    pub rcode: RCODE
+    pub rcode: RCODE,
 }
 
 impl fmt::Display for DNSError {
@@ -27,7 +27,7 @@ impl fmt::Display for ParseError {
 
 #[derive(Debug)]
 pub struct DatabaseError {
-    pub message: String
+    pub message: String,
 }
 
 impl fmt::Display for DatabaseError {
@@ -77,7 +77,24 @@ where
     fn from(value: E) -> Self {
         DNSError {
             message: value.into().to_string(),
-            rcode: RCODE::FORMERR
+            rcode: RCODE::FORMERR,
+        }
+    }
+}
+
+trait Supported {}
+
+impl Supported for reqwest::Error {}
+impl Supported for DatabaseError {}
+
+impl<E> From<E> for AuthenticationError
+where
+    E: Supported,
+    E: std::fmt::Display,
+{
+    fn from(value: E) -> Self {
+        AuthenticationError {
+            message: value.to_string(),
         }
     }
 }

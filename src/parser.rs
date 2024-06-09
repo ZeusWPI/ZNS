@@ -4,8 +4,7 @@ use crate::{
     errors::ParseError,
     reader::Reader,
     structs::{
-        Class, DNSKeyRData, Header, KeyRData, LabelString, Message, Opcode, Question, RRClass,
-        RRType, Type, RR,
+        Class, Header, KeyRData, LabelString, Message, Opcode, Question, RRClass, RRType, Type, RR,
     },
 };
 
@@ -43,12 +42,14 @@ impl From<Class> for u16 {
 
 impl From<u16> for Type {
     fn from(value: u16) -> Self {
+        //TODO: use macro
         match value {
             x if x == RRType::A as u16 => Type::Type(RRType::A),
             x if x == RRType::OPT as u16 => Type::Type(RRType::OPT),
             x if x == RRType::SOA as u16 => Type::Type(RRType::SOA),
             x if x == RRType::ANY as u16 => Type::Type(RRType::SOA),
             x if x == RRType::KEY as u16 => Type::Type(RRType::KEY),
+            x if x == RRType::DNSKEY as u16 => Type::Type(RRType::DNSKEY),
             x => Type::Other(x),
         }
     }
@@ -323,24 +324,6 @@ impl FromBytes for KeyRData {
                 key_tag: reader.read_u16()?,
                 signer: LabelString::from_bytes(reader)?,
                 signature: reader.read(reader.unread_bytes())?,
-            })
-        }
-    }
-}
-
-impl FromBytes for DNSKeyRData {
-    fn from_bytes(reader: &mut Reader) -> Result<Self> {
-        if reader.unread_bytes() < 18 {
-            Err(ParseError {
-                object: String::from("DNSKeyRData"),
-                message: String::from("invalid rdata"),
-            })
-        } else {
-            Ok(DNSKeyRData {
-                flags: reader.read_u16()?,
-                protocol: reader.read_u8()?,
-                algorithm: reader.read_u8()?,
-                public_key: reader.read(reader.unread_bytes())?,
             })
         }
     }

@@ -9,7 +9,8 @@ pub enum Type {
 pub enum RRType {
     A = 1,
     SOA = 6,
-    KEY = 24,
+    KEY = 24, //TODO: change to SIG
+    DNSKEY = 48,
     OPT = 41,
     ANY = 255,
 }
@@ -105,13 +106,4 @@ pub struct KeyRData {
     pub key_tag: u16,
     pub signer: LabelString,
     pub signature: Vec<u8>,
-}
-
-/// https://datatracker.ietf.org/doc/html/rfc4034#section-2
-#[derive(Debug)]
-pub struct DNSKeyRData {
-    pub flags: u16,
-    pub protocol: u8,
-    pub algorithm: u8,
-    pub public_key: Vec<u8>,
 }

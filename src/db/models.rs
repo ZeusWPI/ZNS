@@ -1,6 +1,6 @@
 use crate::{
     errors::DatabaseError,
-    structs::{Class, Question, Type, RR},
+    structs::{Class, Type, RR},
 };
 use diesel::prelude::*;
 
@@ -99,17 +99,18 @@ pub async fn insert_into_database(rr: &RR) -> Result<(), DatabaseError> {
     Ok(())
 }
 
-pub async fn get_from_database(question: &Question) -> Result<Vec<RR>, DatabaseError> {
+pub async fn get_from_database(
+    name: &Vec<String>,
+    _type: Type,
+    class: Class,
+) -> Result<Vec<RR>, DatabaseError> {
     let db_connection = &mut establish_connection();
-    let records = Record::get(
-        db_connection,
-        question.qname.join("."),
-        question.qtype.clone().into(),
-        question.qclass.clone().into(),
-    )
-    .map_err(|e| DatabaseError {
-        message: e.to_string(),
-    })?;
+    let records =
+        Record::get(db_connection, name.join("."), _type.into(), class.into()).map_err(|e| {
+            DatabaseError {
+                message: e.to_string(),
+            }
+        })?;
 
     Ok(records
         .into_iter()
