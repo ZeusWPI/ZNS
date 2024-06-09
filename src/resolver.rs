@@ -6,7 +6,7 @@ use tokio::net::UdpSocket;
 
 use crate::errors::ParseError;
 use crate::handlers::{Handler, ResponseHandler};
-use crate::parser::FromBytes;
+use crate::parser::{FromBytes, ToBytes};
 use crate::reader::Reader;
 use crate::structs::{Header, Message, RCODE};
 

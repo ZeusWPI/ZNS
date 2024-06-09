@@ -106,3 +106,12 @@ pub struct KeyRData {
     pub signer: LabelString,
     pub signature: Vec<u8>,
 }
+
+/// https://datatracker.ietf.org/doc/html/rfc4034#section-2
+#[derive(Debug)]
+pub struct DNSKeyRData {
+    pub flags: u16,
+    pub protocol: u8,
+    pub algorithm: u8,
+    pub public_key: Vec<u8>,
+}

@@ -4,7 +4,8 @@ use crate::{
     errors::ParseError,
     reader::Reader,
     structs::{
-        Class, Header, KeyRData, LabelString, Message, Opcode, Question, RRClass, RRType, Type, RR,
+        Class, DNSKeyRData, Header, KeyRData, LabelString, Message, Opcode, Question, RRClass,
+        RRType, Type, RR,
     },
 };
 
@@ -80,6 +81,9 @@ pub trait FromBytes {
     fn from_bytes(reader: &mut Reader) -> Result<Self>
     where
         Self: Sized;
+}
+
+pub trait ToBytes {
     fn to_bytes(s: Self) -> Vec<u8>
     where
         Self: Sized;
@@ -103,7 +107,9 @@ impl FromBytes for Header {
             })
         }
     }
+}
 
+impl ToBytes for Header {
     fn to_bytes(header: Self) -> Vec<u8> {
         let mut result: [u8; size_of::<Header>()] = [0; size_of::<Header>()];
 
@@ -144,7 +150,9 @@ impl FromBytes for LabelString {
 
         Ok(out)
     }
+}
 
+impl ToBytes for LabelString {
     fn to_bytes(name: Self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
         for label in name {
@@ -187,7 +195,9 @@ impl FromBytes for Question {
             }
         }
     }
+}
 
+impl ToBytes for Question {
     fn to_bytes(question: Self) -> Vec<u8> {
         let mut result = LabelString::to_bytes(question.qname);
         result.extend(u16::to_be_bytes(question.qtype.into()));
@@ -226,7 +236,9 @@ impl FromBytes for RR {
             }
         }
     }
+}
 
+impl ToBytes for RR {
     fn to_bytes(rr: Self) -> Vec<u8> {
         let mut result = LabelString::to_bytes(rr.name);
         result.extend(u16::to_be_bytes(rr._type.into()));
@@ -270,7 +282,9 @@ impl FromBytes for Message {
             additional,
         })
     }
+}
 
+impl ToBytes for Message {
     fn to_bytes(message: Self) -> Vec<u8> {
         let mut result = vec![];
         result.extend(Header::to_bytes(message.header));
@@ -312,11 +326,22 @@ impl FromBytes for KeyRData {
             })
         }
     }
+}
 
-    fn to_bytes(_: Self) -> Vec<u8>
-    where
-        Self: Sized,
-    {
-        todo!()
+impl FromBytes for DNSKeyRData {
+    fn from_bytes(reader: &mut Reader) -> Result<Self> {
+        if reader.unread_bytes() < 18 {
+            Err(ParseError {
+                object: String::from("DNSKeyRData"),
+                message: String::from("invalid rdata"),
+            })
+        } else {
+            Ok(DNSKeyRData {
+                flags: reader.read_u16()?,
+                protocol: reader.read_u8()?,
+                algorithm: reader.read_u8()?,
+                public_key: reader.read(reader.unread_bytes())?,
+            })
+        }
     }
 }
