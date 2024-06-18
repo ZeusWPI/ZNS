@@ -1,4 +1,4 @@
-use reqwest::Error;
+use base64::prelude::*;
 
 use crate::{
     config::Config,
@@ -9,7 +9,11 @@ use crate::{
     structs::{Class, RRClass, RRType, Type},
 };
 
-use super::{dnskey::DNSKeyRData, sig::Sig};
+use super::{
+    dnskey::DNSKeyRData,
+    pubkeys::{Ed25519PublicKey, PublicKey, PublicKeyError, RsaPublicKey, SSH_ED25519, SSH_RSA},
+    sig::Sig,
+};
 
 pub(super) async fn authenticate(
     sig: &Sig,
@@ -32,7 +36,7 @@ pub(super) async fn authenticate(
     }
 }
 
-async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, Error> {
+async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, PublicKeyError> {
     Ok(reqwest::get(format!(
         "{}/users/keys/{}",
         Config::get().zauth_url,
@@ -44,11 +48,13 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, Error> {
     .iter()
     .any(|key| {
         let key_split: Vec<&str> = key.split_ascii_whitespace().collect();
-        match key_split.len() {
-            3 => match key_split[0] {
-                "ssh-ed25519" => sig.verify_ssh_ed25519(key_split[1]),
-                _ => false,
-            },
+        let bin = BASE64_STANDARD.decode(key_split[1]).unwrap();
+        match key_split[0] {
+            //TODO: do something with error, debugging?
+            SSH_ED25519 => {
+                Ed25519PublicKey::from_openssh(&bin).is_ok_and(|pubkey| sig.verify(pubkey))
+            }
+            SSH_RSA => RsaPublicKey::from_openssh(&bin).is_ok_and(|pubkey| sig.verify(pubkey)),
             _ => false,
         }
     }))
@@ -66,4 +72,20 @@ async fn validate_dnskey(zone: &Vec<String>, sig: &Sig) -> Result<bool, Database
                     .is_ok_and(|b| b)
             }),
     )
+}
+
+impl From<reqwest::Error> for PublicKeyError {
+    fn from(value: reqwest::Error) -> Self {
+        PublicKeyError {
+            message: format!("Reqwest Error: {}", value.to_string()),
+        }
+    }
+}
+
+impl From<PublicKeyError> for AuthenticationError {
+    fn from(value: PublicKeyError) -> Self {
+        AuthenticationError {
+            message: value.to_string(),
+        }
+    }
 }

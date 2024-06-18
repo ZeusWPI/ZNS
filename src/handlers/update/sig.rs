@@ -1,11 +1,11 @@
-use base64::prelude::*;
-
 use crate::{
     errors::ParseError,
     parser::FromBytes,
     reader::Reader,
     structs::{KeyRData, RR},
 };
+
+use super::pubkeys::PublicKey;
 
 pub(super) struct Sig {
     raw_data: Vec<u8>,
@@ -29,24 +29,8 @@ impl Sig {
         })
     }
 
-    pub fn verify_ed25519(&self, key: &str) -> bool {
-        let blob = BASE64_STANDARD.decode(key).unwrap();
-
-        let pkey = ring::signature::UnparsedPublicKey::new(&ring::signature::ED25519, &blob);
-
-        pkey.verify(&self.raw_data, &self.key_rdata.signature)
-            .is_ok()
-    }
-
-    pub fn verify_ssh_ed25519(&self, key: &str) -> bool {
-        let blob = BASE64_STANDARD.decode(key).unwrap();
-
-        let pkey = ring::signature::UnparsedPublicKey::new(
-            &ring::signature::ED25519,
-            &blob.as_slice()[19..],
-        );
-
-        pkey.verify(&self.raw_data, &self.key_rdata.signature)
-            .is_ok()
+    pub fn verify(&self, key: impl PublicKey) -> bool {
+        key.verify(&self.raw_data, &self.key_rdata.signature)
+            .is_ok_and(|b| b)
     }
 }

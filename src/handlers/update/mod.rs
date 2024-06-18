@@ -11,6 +11,7 @@ use super::ResponseHandler;
 
 mod authenticate;
 mod dnskey;
+mod pubkeys;
 mod sig;
 
 pub(super) struct UpdateHandler {}

@@ -1,8 +1,9 @@
-use base64::prelude::*;
-
 use crate::{errors::ParseError, parser::FromBytes, reader::Reader};
 
-use super::sig::Sig;
+use super::{
+    pubkeys::{Ed25519PublicKey, PublicKey, RsaPublicKey},
+    sig::Sig,
+};
 
 /// https://datatracker.ietf.org/doc/html/rfc4034#section-2
 #[derive(Debug)]
@@ -27,9 +28,12 @@ impl FromBytes for DNSKeyRData {
 
 impl DNSKeyRData {
     pub fn verify(&self, sig: &Sig) -> bool {
-        let encoded = BASE64_STANDARD.encode(&self.public_key);
         match self.algorithm {
-            15 => sig.verify_ed25519(&encoded),
+            10 => {
+                RsaPublicKey::from_dnskey(&self.public_key).is_ok_and(|pubkey| sig.verify(pubkey))
+            }
+            15 => Ed25519PublicKey::from_dnskey(&self.public_key)
+                .is_ok_and(|pubkey| sig.verify(pubkey)),
             _ => false,
         }
     }
