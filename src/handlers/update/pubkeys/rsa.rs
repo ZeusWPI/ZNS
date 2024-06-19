@@ -51,7 +51,8 @@ impl PublicKey for RsaPublicKey {
         let mut reader = Reader::new(key);
         let e_len = reader.read_u8()?;
         let e = reader.read(e_len as usize)?;
-        let n = reader.read(reader.unread_bytes())?;
+        let mut n = reader.read(reader.unread_bytes())?;
+        n.insert(0, 0);
         Ok(RsaPublicKey { e, n })
     }
 }
