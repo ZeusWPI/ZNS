@@ -1,16 +1,13 @@
 use crate::{errors::ParseError, parser::FromBytes, reader::Reader};
 
-use super::{
-    pubkeys::{Ed25519PublicKey, PublicKey, RsaPublicKey},
-    sig::Sig,
-};
+use super::sig::Algorithm;
 
 /// https://datatracker.ietf.org/doc/html/rfc4034#section-2
 #[derive(Debug)]
-pub(super) struct DNSKeyRData {
+pub struct DNSKeyRData {
     pub flags: u16,
     pub protocol: u8,
-    pub algorithm: u8,
+    pub algorithm: Algorithm,
     pub public_key: Vec<u8>,
 }
 
@@ -20,21 +17,8 @@ impl FromBytes for DNSKeyRData {
         Ok(DNSKeyRData {
             flags: reader.read_u16()?,
             protocol: reader.read_u8()?,
-            algorithm: reader.read_u8()?,
+            algorithm: Algorithm::from(reader.read_u8()?)?,
             public_key: reader.read(reader.unread_bytes())?,
         })
-    }
-}
-
-impl DNSKeyRData {
-    pub fn verify(&self, sig: &Sig) -> bool {
-        match self.algorithm {
-            10 => {
-                RsaPublicKey::from_dnskey(&self.public_key).is_ok_and(|pubkey| sig.verify(pubkey))
-            }
-            15 => Ed25519PublicKey::from_dnskey(&self.public_key)
-                .is_ok_and(|pubkey| sig.verify(pubkey)),
-            _ => false,
-        }
     }
 }

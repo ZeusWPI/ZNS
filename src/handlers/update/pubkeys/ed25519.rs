@@ -1,6 +1,6 @@
 use ring::signature;
 
-use crate::reader::Reader;
+use crate::{handlers::update::sig::Algorithm, reader::Reader};
 
 use super::{PublicKey, PublicKeyError, SSH_ED25519};
 
@@ -28,7 +28,12 @@ impl PublicKey for Ed25519PublicKey {
         Ok(Ed25519PublicKey { data: key.to_vec() })
     }
 
-    fn verify(&self, data: &[u8], signature: &[u8]) -> Result<bool, PublicKeyError> {
+    fn verify(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+        _algorithm: &Algorithm,
+    ) -> Result<bool, PublicKeyError> {
         let pkey = ring::signature::UnparsedPublicKey::new(&signature::ED25519, &self.data);
 
         Ok(pkey.verify(data, signature).is_ok())

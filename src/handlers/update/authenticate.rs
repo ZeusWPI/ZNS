@@ -1,5 +1,3 @@
-use base64::prelude::*;
-
 use crate::{
     config::Config,
     db::models::get_from_database,
@@ -9,16 +7,9 @@ use crate::{
     structs::{Class, RRClass, RRType, Type},
 };
 
-use super::{
-    dnskey::DNSKeyRData,
-    pubkeys::{Ed25519PublicKey, PublicKey, PublicKeyError, RsaPublicKey, SSH_ED25519, SSH_RSA},
-    sig::Sig,
-};
+use super::{dnskey::DNSKeyRData, pubkeys::PublicKeyError, sig::Sig};
 
-pub(super) async fn authenticate(
-    sig: &Sig,
-    zone: &Vec<String>,
-) -> Result<bool, AuthenticationError> {
+pub async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool, AuthenticationError> {
     if zone.len() >= 4 {
         let username = &zone[zone.len() - 4]; // Should match: username.users.zeus.gent
 
@@ -36,7 +27,7 @@ pub(super) async fn authenticate(
     }
 }
 
-async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, PublicKeyError> {
+async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Error> {
     Ok(reqwest::get(format!(
         "{}/users/keys/{}",
         Config::get().zauth_url,
@@ -46,18 +37,7 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, PublicKeyErr
     .json::<Vec<String>>()
     .await?
     .iter()
-    .any(|key| {
-        let key_split: Vec<&str> = key.split_ascii_whitespace().collect();
-        let bin = BASE64_STANDARD.decode(key_split[1]).unwrap();
-        match key_split[0] {
-            //TODO: do something with error, debugging?
-            SSH_ED25519 => {
-                Ed25519PublicKey::from_openssh(&bin).is_ok_and(|pubkey| sig.verify(pubkey))
-            }
-            SSH_RSA => RsaPublicKey::from_openssh(&bin).is_ok_and(|pubkey| sig.verify(pubkey)),
-            _ => false,
-        }
-    }))
+    .any(|key| sig.verify_ssh(&key).is_ok_and(|b| b)))
 }
 
 async fn validate_dnskey(zone: &Vec<String>, sig: &Sig) -> Result<bool, DatabaseError> {
@@ -68,18 +48,9 @@ async fn validate_dnskey(zone: &Vec<String>, sig: &Sig) -> Result<bool, Database
             .any(|rr| {
                 let mut reader = Reader::new(&rr.rdata);
                 DNSKeyRData::from_bytes(&mut reader)
-                    .map(|key| key.verify(sig))
-                    .is_ok_and(|b| b)
+                    .is_ok_and(|dnskey| sig.verify_dnskey(dnskey).is_ok_and(|b| b))
             }),
     )
-}
-
-impl From<reqwest::Error> for PublicKeyError {
-    fn from(value: reqwest::Error) -> Self {
-        PublicKeyError {
-            message: format!("Reqwest Error: {}", value.to_string()),
-        }
-    }
 }
 
 impl From<PublicKeyError> for AuthenticationError {

@@ -1,6 +1,6 @@
 use ring::signature;
 
-use crate::reader::Reader;
+use crate::{handlers::update::sig::Algorithm, reader::Reader};
 
 use super::{PublicKey, PublicKeyError, SSH_RSA};
 
@@ -29,7 +29,12 @@ impl PublicKey for RsaPublicKey {
         Ok(RsaPublicKey { e, n })
     }
 
-    fn verify(&self, data: &[u8], signature: &[u8]) -> Result<bool, PublicKeyError> {
+    fn verify(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+        algorithm: &Algorithm,
+    ) -> Result<bool, PublicKeyError> {
         let result = asn1::write_single(&RsaAsn1 {
             n: asn1::BigInt::new(&self.n),
             e: asn1::BigInt::new(&self.e),
@@ -38,8 +43,15 @@ impl PublicKey for RsaPublicKey {
             message: format!("Verify Error: {}", e),
         })?;
 
-        let pkey =
-            ring::signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA512, result);
+        let signature_type = match algorithm {
+            Algorithm::RSASHA512 => Ok(&signature::RSA_PKCS1_2048_8192_SHA512),
+            Algorithm::RSASHA256 => Ok(&signature::RSA_PKCS1_2048_8192_SHA256),
+            _ => Err(PublicKeyError {
+                message: format!("RsaPublicKey: invalid verify algorithm",),
+            }),
+        }?;
+
+        let pkey = ring::signature::UnparsedPublicKey::new(signature_type, result);
 
         Ok(pkey.verify(data, signature).is_ok())
     }

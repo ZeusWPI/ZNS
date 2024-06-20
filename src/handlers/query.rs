@@ -6,7 +6,7 @@ use crate::{
 
 use super::ResponseHandler;
 
-pub(super) struct QueryHandler {}
+pub struct QueryHandler {}
 
 impl ResponseHandler for QueryHandler {
     async fn handle(message: &Message, _raw: &[u8]) -> Result<Message, DNSError> {

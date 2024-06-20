@@ -14,7 +14,7 @@ mod dnskey;
 mod pubkeys;
 mod sig;
 
-pub(super) struct UpdateHandler {}
+pub struct UpdateHandler {}
 
 impl ResponseHandler for UpdateHandler {
     async fn handle(message: &Message, raw: &[u8]) -> Result<Message, crate::errors::DNSError> {

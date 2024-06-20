@@ -3,9 +3,7 @@ use std::{mem::size_of, vec};
 use crate::{
     errors::ParseError,
     reader::Reader,
-    structs::{
-        Class, Header, KeyRData, LabelString, Message, Opcode, Question, RRClass, RRType, Type, RR,
-    },
+    structs::{Class, Header, LabelString, Message, Opcode, Question, RRClass, RRType, Type, RR},
 };
 
 type Result<T> = std::result::Result<T, ParseError>;
@@ -42,26 +40,18 @@ impl From<Class> for u16 {
 
 impl From<u16> for Type {
     fn from(value: u16) -> Self {
-        //TODO: use macro
-        match value {
-            x if x == RRType::A as u16 => Type::Type(RRType::A),
-            x if x == RRType::OPT as u16 => Type::Type(RRType::OPT),
-            x if x == RRType::SOA as u16 => Type::Type(RRType::SOA),
-            x if x == RRType::ANY as u16 => Type::Type(RRType::SOA),
-            x if x == RRType::KEY as u16 => Type::Type(RRType::KEY),
-            x if x == RRType::DNSKEY as u16 => Type::Type(RRType::DNSKEY),
-            x => Type::Other(x),
+        match RRType::try_from(value) {
+            Ok(rrtype) => Type::Type(rrtype),
+            Err(x) => Type::Other(x),
         }
     }
 }
 
 impl From<u16> for Class {
     fn from(value: u16) -> Self {
-        match value {
-            x if x == RRClass::IN as u16 => Class::Class(RRClass::IN),
-            x if x == RRClass::ANY as u16 => Class::Class(RRClass::ANY),
-            x if x == RRClass::NONE as u16 => Class::Class(RRClass::NONE),
-            x => Class::Other(x),
+        match RRClass::try_from(value) {
+            Ok(rrclass) => Class::Class(rrclass),
+            Err(x) => Class::Other(x),
         }
     }
 }
@@ -303,28 +293,5 @@ impl ToBytes for Message {
             result.extend(RR::to_bytes(additional));
         }
         result
-    }
-}
-
-impl FromBytes for KeyRData {
-    fn from_bytes(reader: &mut Reader) -> Result<Self> {
-        if reader.unread_bytes() < 18 {
-            Err(ParseError {
-                object: String::from("KeyRData"),
-                message: String::from("invalid rdata"),
-            })
-        } else {
-            Ok(KeyRData {
-                type_covered: reader.read_u16()?,
-                algo: reader.read_u8()?,
-                labels: reader.read_u8()?,
-                original_ttl: reader.read_u32()?,
-                signature_expiration: reader.read_u32()?,
-                signature_inception: reader.read_u32()?,
-                key_tag: reader.read_u16()?,
-                signer: LabelString::from_bytes(reader)?,
-                signature: reader.read(reader.unread_bytes())?,
-            })
-        }
     }
 }

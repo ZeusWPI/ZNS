@@ -3,12 +3,12 @@ mod rsa;
 use core::fmt;
 use std::str::from_utf8;
 
-use base64::prelude::*;
-
 use crate::{errors::ReaderError, reader::Reader};
 
 pub use self::ed25519::Ed25519PublicKey;
 pub use self::rsa::RsaPublicKey;
+
+use super::sig::Algorithm;
 
 #[derive(Debug)]
 pub struct PublicKeyError {
@@ -60,5 +60,10 @@ pub trait PublicKey {
     where
         Self: Sized;
 
-    fn verify(&self, data: &[u8], signature: &[u8]) -> Result<bool, PublicKeyError>;
+    fn verify(
+        &self,
+        data: &[u8],
+        signature: &[u8],
+        algorithm: &Algorithm,
+    ) -> Result<bool, PublicKeyError>;
 }

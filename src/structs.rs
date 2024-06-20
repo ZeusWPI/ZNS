@@ -1,3 +1,5 @@
+use int_enum::IntEnum;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Type(RRType),
@@ -5,7 +7,7 @@ pub enum Type {
 }
 
 #[repr(u16)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, IntEnum)]
 pub enum RRType {
     A = 1,
     SOA = 6,
@@ -22,7 +24,7 @@ pub enum Class {
 }
 
 #[repr(u16)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, IntEnum)]
 pub enum RRClass {
     IN = 1,
     NONE = 254,
@@ -94,16 +96,3 @@ pub struct OptRR {
 }
 
 pub type LabelString = Vec<String>;
-
-#[derive(Debug)]
-pub struct KeyRData {
-    pub type_covered: u16,
-    pub algo: u8,
-    pub labels: u8,
-    pub original_ttl: u32,
-    pub signature_expiration: u32,
-    pub signature_inception: u32,
-    pub key_tag: u16,
-    pub signer: LabelString,
-    pub signature: Vec<u8>,
-}
