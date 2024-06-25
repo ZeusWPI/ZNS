@@ -1,8 +1,8 @@
 use ring::signature;
 
-use crate::{handlers::update::sig::Algorithm, reader::Reader};
+use crate::{errors::ZNSError, handlers::update::sig::Algorithm, reader::Reader};
 
-use super::{PublicKey, PublicKeyError, SSH_RSA};
+use super::{PublicKey, SSH_RSA};
 
 pub struct RsaPublicKey {
     e: Vec<u8>,
@@ -16,7 +16,7 @@ struct RsaAsn1<'a> {
 }
 
 impl PublicKey for RsaPublicKey {
-    fn from_openssh(key: &[u8]) -> Result<Self, PublicKeyError>
+    fn from_openssh(key: &[u8]) -> Result<Self, ZNSError>
     where
         Self: Sized,
     {
@@ -34,19 +34,19 @@ impl PublicKey for RsaPublicKey {
         data: &[u8],
         signature: &[u8],
         algorithm: &Algorithm,
-    ) -> Result<bool, PublicKeyError> {
+    ) -> Result<bool, ZNSError> {
         let result = asn1::write_single(&RsaAsn1 {
             n: asn1::BigInt::new(&self.n),
             e: asn1::BigInt::new(&self.e),
         })
-        .map_err(|e| PublicKeyError {
+        .map_err(|e| ZNSError::PublicKey {
             message: format!("Verify Error: {}", e),
         })?;
 
         let signature_type = match algorithm {
             Algorithm::RSASHA512 => Ok(&signature::RSA_PKCS1_2048_8192_SHA512),
             Algorithm::RSASHA256 => Ok(&signature::RSA_PKCS1_2048_8192_SHA256),
-            _ => Err(PublicKeyError {
+            _ => Err(ZNSError::PublicKey {
                 message: format!("RsaPublicKey: invalid verify algorithm",),
             }),
         }?;
@@ -56,7 +56,7 @@ impl PublicKey for RsaPublicKey {
         Ok(pkey.verify(data, signature).is_ok())
     }
 
-    fn from_dnskey(key: &[u8]) -> Result<Self, PublicKeyError>
+    fn from_dnskey(key: &[u8]) -> Result<Self, ZNSError>
     where
         Self: Sized,
     {

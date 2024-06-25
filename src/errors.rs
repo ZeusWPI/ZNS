@@ -1,100 +1,44 @@
-use core::fmt;
+use thiserror::Error;
 
 use crate::structs::RCODE;
 
-pub struct DNSError {
-    pub message: String,
-    pub rcode: RCODE,
+#[derive(Error, Debug)]
+pub enum ZNSError {
+    #[error("Parse Error for {object:?}: {message:?}")]
+    Parse { object: String, message: String },
+    #[error("Database Error: {message:?}")]
+    Database { message: String },
+    #[error("Reader Error: {message:?}")]
+    Reader { message: String },
+    #[error("PublicKey Error: {message:?}")]
+    PublicKey { message: String },
+    #[error("Reqwest error")]
+    Reqwest(#[from] reqwest::Error),
+
+    #[error("DNS Query Format Error: {message:?}")]
+    Formerr { message: String },
+    #[error("Domain name does not exist")]
+    NXDomain { domain: String },
+    #[error("NotImplemented Error for {object:?}: {message:?}")]
+    NotImp { object: String, message: String },
+    #[error("Authentication Error: {message:?}")]
+    NotAuth { message: String },
+    #[error("I refuse to answer the query: {message:?}")]
+    Refused { message: String },
 }
 
-impl fmt::Display for DNSError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Error: {}", self.message)
-    }
-}
+impl ZNSError {
+    pub fn rcode(&self) -> RCODE {
+        match self {
+            ZNSError::Formerr { .. } | ZNSError::Parse { .. } | ZNSError::Reader { .. } => {
+                RCODE::FORMERR
+            }
+            ZNSError::Database { .. } | ZNSError::Reqwest(_) => RCODE::SERVFAIL,
 
-#[derive(Debug)]
-pub struct ParseError {
-    pub object: String,
-    pub message: String,
-}
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Parse Error for {}: {}", self.object, self.message)
-    }
-}
-
-#[derive(Debug)]
-pub struct DatabaseError {
-    pub message: String,
-}
-
-impl fmt::Display for DatabaseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Database Error: {}", self.message)
-    }
-}
-
-#[derive(Debug)]
-pub struct AuthenticationError {
-    pub message: String,
-}
-
-impl fmt::Display for AuthenticationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Authentication Error: {}", self.message)
-    }
-}
-
-#[derive(Debug)]
-pub struct ReaderError {
-    pub message: String,
-}
-
-impl fmt::Display for ReaderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Reader Error: {}", self.message)
-    }
-}
-
-impl<E> From<E> for ParseError
-where
-    E: Into<ReaderError>,
-{
-    fn from(value: E) -> Self {
-        ParseError {
-            object: String::from("Reader"),
-            message: value.into().to_string(),
-        }
-    }
-}
-
-impl<E> From<E> for DNSError
-where
-    E: Into<ParseError>,
-{
-    fn from(value: E) -> Self {
-        DNSError {
-            message: value.into().to_string(),
-            rcode: RCODE::FORMERR,
-        }
-    }
-}
-
-trait Supported {}
-
-impl Supported for reqwest::Error {}
-impl Supported for DatabaseError {}
-
-impl<E> From<E> for AuthenticationError
-where
-    E: Supported,
-    E: std::fmt::Display,
-{
-    fn from(value: E) -> Self {
-        AuthenticationError {
-            message: value.to_string(),
+            ZNSError::NotAuth { .. } | ZNSError::PublicKey { .. } => RCODE::NOTAUTH,
+            ZNSError::NXDomain { .. } => RCODE::NXDOMAIN,
+            ZNSError::NotImp { .. } => RCODE::NOTIMP,
+            ZNSError::Refused { .. } => RCODE::REFUSED,
         }
     }
 }

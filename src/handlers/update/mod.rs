@@ -1,7 +1,7 @@
 use crate::{
     db::models::{delete_from_database, insert_into_database},
-    errors::DNSError,
-    structs::{Class, Message, RRClass, RRType, Type, RCODE},
+    errors::ZNSError,
+    structs::{Class, Message, RRClass, RRType, Type},
     utils::vec_equal,
 };
 
@@ -17,15 +17,14 @@ mod sig;
 pub struct UpdateHandler {}
 
 impl ResponseHandler for UpdateHandler {
-    async fn handle(message: &Message, raw: &[u8]) -> Result<Message, crate::errors::DNSError> {
+    async fn handle(message: &Message, raw: &[u8]) -> Result<Message, ZNSError> {
         let response = message.clone();
         // Zone section (question) processing
         if (message.header.qdcount != 1)
             || !matches!(message.question[0].qtype, Type::Type(RRType::SOA))
         {
-            return Err(DNSError {
+            return Err(ZNSError::Formerr {
                 message: "Qdcount not one".to_string(),
-                rcode: RCODE::FORMERR,
             });
         }
 
@@ -33,9 +32,8 @@ impl ResponseHandler for UpdateHandler {
         let zone = &message.question[0];
         let zlen = zone.qname.len();
         if !(zlen >= 2 && zone.qname[zlen - 1] == "gent" && zone.qname[zlen - 2] == "zeus") {
-            return Err(DNSError {
+            return Err(ZNSError::Formerr {
                 message: "Invalid zone".to_string(),
-                rcode: RCODE::NOTAUTH,
             });
         }
 
@@ -50,15 +48,13 @@ impl ResponseHandler for UpdateHandler {
                 .await
                 .is_ok_and(|x| x)
             {
-                return Err(DNSError {
+                return Err(ZNSError::NotAuth {
                     message: "Unable to verify authentication".to_string(),
-                    rcode: RCODE::NOTAUTH,
                 });
             }
         } else {
-            return Err(DNSError {
+            return Err(ZNSError::NotAuth {
                 message: "No KEY record at the end of request found".to_string(),
-                rcode: RCODE::NOTAUTH,
             });
         }
 
@@ -68,9 +64,8 @@ impl ResponseHandler for UpdateHandler {
 
             // Check if rr has same zone
             if rlen < zlen || !(vec_equal(&zone.qname, &rr.name[rlen - zlen..])) {
-                return Err(DNSError {
+                return Err(ZNSError::Refused {
                     message: "RR has different zone from Question".to_string(),
-                    rcode: RCODE::NOTZONE,
                 });
             }
 
@@ -84,9 +79,8 @@ impl ResponseHandler for UpdateHandler {
                 .contains(&rr.class)
             {
                 true => {
-                    return Err(DNSError {
+                    return Err(ZNSError::Formerr {
                         message: "RR has invalid rr,ttl or class".to_string(),
-                        rcode: RCODE::FORMERR,
                     });
                 }
                 false => (),
@@ -99,9 +93,9 @@ impl ResponseHandler for UpdateHandler {
             } else if rr.class == Class::Class(RRClass::ANY) {
                 if rr._type == Type::Type(RRType::ANY) {
                     if rr.name == zone.qname {
-                        return Err(DNSError {
-                            message: "Not yet implemented".to_string(),
-                            rcode: RCODE::NOTIMP,
+                        return Err(ZNSError::NotImp {
+                            object: String::from("Update Handler"),
+                            message: "rr.name == zone.qname".to_string(),
                         });
                     } else {
                         delete_from_database(&rr.name, None, Class::Class(RRClass::IN), None).await;

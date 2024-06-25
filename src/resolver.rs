@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
-use crate::errors::ParseError;
+use crate::errors::ZNSError;
 use crate::handlers::{Handler, ResponseHandler};
 use crate::parser::{FromBytes, ToBytes};
 use crate::reader::Reader;
@@ -12,7 +12,7 @@ use crate::structs::{Header, Message, RCODE};
 
 const MAX_DATAGRAM_SIZE: usize = 4096;
 
-fn handle_parse_error(bytes: &[u8], err: ParseError) -> Message {
+fn handle_parse_error(bytes: &[u8], err: ZNSError) -> Message {
     eprintln!("{}", err);
     let mut reader = Reader::new(bytes);
     let mut header = Header::from_bytes(&mut reader).unwrap_or(Header {
@@ -50,7 +50,7 @@ async fn get_response(bytes: &[u8]) -> Message {
             }
             Err(e) => {
                 eprintln!("{}", e.to_string());
-                message.set_response(e.rcode);
+                message.set_response(e.rcode());
                 message
             }
         },

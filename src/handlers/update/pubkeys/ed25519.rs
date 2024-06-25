@@ -1,15 +1,15 @@
 use ring::signature;
 
-use crate::{handlers::update::sig::Algorithm, reader::Reader};
+use crate::{errors::ZNSError, handlers::update::sig::Algorithm, reader::Reader};
 
-use super::{PublicKey, PublicKeyError, SSH_ED25519};
+use super::{PublicKey, SSH_ED25519};
 
 pub struct Ed25519PublicKey {
     data: Vec<u8>,
 }
 
 impl PublicKey for Ed25519PublicKey {
-    fn from_openssh(key: &[u8]) -> Result<Self, PublicKeyError>
+    fn from_openssh(key: &[u8]) -> Result<Self, ZNSError>
     where
         Self: Sized,
     {
@@ -21,7 +21,7 @@ impl PublicKey for Ed25519PublicKey {
         })
     }
 
-    fn from_dnskey(key: &[u8]) -> Result<Self, PublicKeyError>
+    fn from_dnskey(key: &[u8]) -> Result<Self, ZNSError>
     where
         Self: Sized,
     {
@@ -33,7 +33,7 @@ impl PublicKey for Ed25519PublicKey {
         data: &[u8],
         signature: &[u8],
         _algorithm: &Algorithm,
-    ) -> Result<bool, PublicKeyError> {
+    ) -> Result<bool, ZNSError> {
         let pkey = ring::signature::UnparsedPublicKey::new(&signature::ED25519, &self.data);
 
         Ok(pkey.verify(data, signature).is_ok())

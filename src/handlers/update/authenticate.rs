@@ -1,15 +1,15 @@
 use crate::{
     config::Config,
     db::models::get_from_database,
-    errors::{AuthenticationError, DatabaseError},
+    errors::ZNSError,
     parser::FromBytes,
     reader::Reader,
     structs::{Class, RRClass, RRType, Type},
 };
 
-use super::{dnskey::DNSKeyRData, pubkeys::PublicKeyError, sig::Sig};
+use super::{dnskey::DNSKeyRData, sig::Sig};
 
-pub async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool, AuthenticationError> {
+pub async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool, ZNSError> {
     if zone.len() >= 4 {
         let username = &zone[zone.len() - 4]; // Should match: username.users.zeus.gent
 
@@ -21,7 +21,7 @@ pub async fn authenticate(sig: &Sig, zone: &Vec<String>) -> Result<bool, Authent
             Ok(validate_dnskey(zone, sig).await?)
         }
     } else {
-        Err(AuthenticationError {
+        Err(ZNSError::NotAuth {
             message: String::from("Invalid zone"),
         })
     }
@@ -40,7 +40,7 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Err
     .any(|key| sig.verify_ssh(&key).is_ok_and(|b| b)))
 }
 
-async fn validate_dnskey(zone: &Vec<String>, sig: &Sig) -> Result<bool, DatabaseError> {
+async fn validate_dnskey(zone: &Vec<String>, sig: &Sig) -> Result<bool, ZNSError> {
     Ok(
         get_from_database(zone, Type::Type(RRType::DNSKEY), Class::Class(RRClass::IN))
             .await?
@@ -51,12 +51,4 @@ async fn validate_dnskey(zone: &Vec<String>, sig: &Sig) -> Result<bool, Database
                     .is_ok_and(|dnskey| sig.verify_dnskey(dnskey).is_ok_and(|b| b))
             }),
     )
-}
-
-impl From<PublicKeyError> for AuthenticationError {
-    fn from(value: PublicKeyError) -> Self {
-        AuthenticationError {
-            message: value.to_string(),
-        }
-    }
 }

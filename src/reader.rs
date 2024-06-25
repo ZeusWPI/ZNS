@@ -1,13 +1,13 @@
 use std::array::TryFromSliceError;
 
-use crate::errors::ReaderError;
+use crate::errors::ZNSError;
 
 pub struct Reader<'a> {
     buffer: &'a [u8],
     position: usize,
 }
 
-type Result<T> = std::result::Result<T, ReaderError>;
+type Result<T> = std::result::Result<T, ZNSError>;
 
 impl<'a> Reader<'a> {
     pub fn new(buffer: &[u8]) -> Reader {
@@ -23,7 +23,7 @@ impl<'a> Reader<'a> {
 
     pub fn read(&mut self, size: usize) -> Result<Vec<u8>> {
         if size > self.unread_bytes() {
-            Err(ReaderError {
+            Err(ZNSError::Reader {
                 message: String::from("cannot read enough bytes"),
             })
         } else {
@@ -41,7 +41,7 @@ impl<'a> Reader<'a> {
         let result = u16::from_be_bytes(
             self.buffer[self.position..self.position + 2]
                 .try_into()
-                .map_err(|e: TryFromSliceError| ReaderError {
+                .map_err(|e: TryFromSliceError| ZNSError::Reader {
                     message: e.to_string(),
                 })?,
         );
@@ -53,7 +53,7 @@ impl<'a> Reader<'a> {
         let result = i32::from_be_bytes(
             self.buffer[self.position..self.position + 4]
                 .try_into()
-                .map_err(|e: TryFromSliceError| ReaderError {
+                .map_err(|e: TryFromSliceError| ZNSError::Reader {
                     message: e.to_string(),
                 })?,
         );
@@ -65,7 +65,7 @@ impl<'a> Reader<'a> {
         let result = u32::from_be_bytes(
             self.buffer[self.position..self.position + 4]
                 .try_into()
-                .map_err(|e: TryFromSliceError| ReaderError {
+                .map_err(|e: TryFromSliceError| ZNSError::Reader {
                     message: e.to_string(),
                 })?,
         );
@@ -75,7 +75,7 @@ impl<'a> Reader<'a> {
 
     pub fn seek(&self, position: usize) -> Result<Self> {
         if position >= self.position {
-            Err(ReaderError {
+            Err(ZNSError::Reader {
                 message: String::from("Seeking into the future is not allowed!!"),
             })
         } else {

@@ -2,7 +2,7 @@ use base64::prelude::*;
 use int_enum::IntEnum;
 
 use crate::{
-    errors::ParseError,
+    errors::ZNSError,
     parser::FromBytes,
     reader::Reader,
     structs::{LabelString, RR},
@@ -10,7 +10,7 @@ use crate::{
 
 use super::{
     dnskey::DNSKeyRData,
-    pubkeys::{Ed25519PublicKey, PublicKey, PublicKeyError, RsaPublicKey, SSH_ED25519, SSH_RSA},
+    pubkeys::{Ed25519PublicKey, PublicKey, RsaPublicKey, SSH_ED25519, SSH_RSA},
 };
 
 pub struct Sig {
@@ -41,9 +41,8 @@ pub enum Algorithm {
 }
 
 impl Algorithm {
-    pub fn from(value: u8) -> Result<Self, ParseError> {
-        Algorithm::try_from(value).map_err(|a| ParseError {
-            // TODO: Should respond with error code refused or notimpl
+    pub fn from(value: u8) -> Result<Self, ZNSError> {
+        Algorithm::try_from(value).map_err(|a| ZNSError::NotImp {
             object: String::from("Algorithm"),
             message: format!("Usupported algorithm: {}", a),
         })
@@ -51,9 +50,9 @@ impl Algorithm {
 }
 
 impl FromBytes for SigRData {
-    fn from_bytes(reader: &mut Reader) -> Result<Self, ParseError> {
+    fn from_bytes(reader: &mut Reader) -> Result<Self, ZNSError> {
         if reader.unread_bytes() < 18 {
-            Err(ParseError {
+            Err(ZNSError::Parse {
                 object: String::from("KeyRData"),
                 message: String::from("invalid rdata"),
             })
@@ -74,7 +73,7 @@ impl FromBytes for SigRData {
 }
 
 impl Sig {
-    pub fn new(rr: &RR, datagram: &[u8]) -> Result<Self, ParseError> {
+    pub fn new(rr: &RR, datagram: &[u8]) -> Result<Self, ZNSError> {
         let mut request = datagram[0..datagram.len() - 11 - rr.rdlength as usize].to_vec();
         request[11] -= 1; // Decrease arcount
 
@@ -90,7 +89,7 @@ impl Sig {
         })
     }
 
-    fn verify(&self, key: impl PublicKey) -> Result<bool, PublicKeyError> {
+    fn verify(&self, key: impl PublicKey) -> Result<bool, ZNSError> {
         key.verify(
             &self.raw_data,
             &self.key_rdata.signature,
@@ -98,7 +97,7 @@ impl Sig {
         )
     }
 
-    pub fn verify_ssh(&self, key: &str) -> Result<bool, PublicKeyError> {
+    pub fn verify_ssh(&self, key: &str) -> Result<bool, ZNSError> {
         let key_split: Vec<&str> = key.split_ascii_whitespace().collect();
         let bin = BASE64_STANDARD.decode(key_split[1]).unwrap();
 
@@ -111,7 +110,7 @@ impl Sig {
         }
     }
 
-    pub fn verify_dnskey(&self, key: DNSKeyRData) -> Result<bool, PublicKeyError> {
+    pub fn verify_dnskey(&self, key: DNSKeyRData) -> Result<bool, ZNSError> {
         if self.key_rdata.algo != key.algorithm {
             Ok(false)
         } else {

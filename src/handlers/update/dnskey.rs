@@ -1,4 +1,4 @@
-use crate::{errors::ParseError, parser::FromBytes, reader::Reader};
+use crate::{errors::ZNSError, parser::FromBytes, reader::Reader};
 
 use super::sig::Algorithm;
 
@@ -13,7 +13,7 @@ pub struct DNSKeyRData {
 
 //TODO: validate values
 impl FromBytes for DNSKeyRData {
-    fn from_bytes(reader: &mut Reader) -> Result<Self, ParseError> {
+    fn from_bytes(reader: &mut Reader) -> Result<Self, ZNSError> {
         Ok(DNSKeyRData {
             flags: reader.read_u16()?,
             protocol: reader.read_u8()?,

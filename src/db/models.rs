@@ -1,5 +1,5 @@
 use crate::{
-    errors::DatabaseError,
+    errors::ZNSError,
     structs::{Class, Type, RR},
 };
 use diesel::prelude::*;
@@ -81,7 +81,7 @@ impl Record {
     }
 }
 
-pub async fn insert_into_database(rr: &RR) -> Result<(), DatabaseError> {
+pub async fn insert_into_database(rr: &RR) -> Result<(), ZNSError> {
     let db_connection = &mut establish_connection();
     let record = Record {
         name: rr.name.join("."),
@@ -92,7 +92,7 @@ pub async fn insert_into_database(rr: &RR) -> Result<(), DatabaseError> {
         rdata: rr.rdata.clone(),
     };
 
-    Record::create(db_connection, record).map_err(|e| DatabaseError {
+    Record::create(db_connection, record).map_err(|e| ZNSError::Database {
         message: e.to_string(),
     })?;
 
@@ -103,11 +103,11 @@ pub async fn get_from_database(
     name: &Vec<String>,
     _type: Type,
     class: Class,
-) -> Result<Vec<RR>, DatabaseError> {
+) -> Result<Vec<RR>, ZNSError> {
     let db_connection = &mut establish_connection();
     let records =
         Record::get(db_connection, name.join("."), _type.into(), class.into()).map_err(|e| {
-            DatabaseError {
+            ZNSError::Database {
                 message: e.to_string(),
             }
         })?;

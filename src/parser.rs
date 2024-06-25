@@ -1,12 +1,12 @@
-use std::{mem::size_of, vec};
+use std::mem::size_of;
 
 use crate::{
-    errors::ParseError,
+    errors::ZNSError,
     reader::Reader,
     structs::{Class, Header, LabelString, Message, Opcode, Question, RRClass, RRType, Type, RR},
 };
 
-type Result<T> = std::result::Result<T, ParseError>;
+type Result<T> = std::result::Result<T, ZNSError>;
 
 impl From<Type> for u16 {
     fn from(value: Type) -> Self {
@@ -83,7 +83,7 @@ pub trait ToBytes {
 impl FromBytes for Header {
     fn from_bytes(reader: &mut Reader) -> Result<Self> {
         if reader.unread_bytes() < size_of::<Header>() {
-            Err(ParseError {
+            Err(ZNSError::Parse {
                 object: String::from("Header"),
                 message: String::from("Size of Header does not match"),
             })
@@ -124,7 +124,7 @@ impl FromBytes for LabelString {
         while code != 0 && (code & 0b11000000 == 0) && reader.unread_bytes() > code as usize {
             out.push(
                 String::from_utf8(reader.read(code as usize)?.to_vec()).map_err(|e| {
-                    ParseError {
+                    ZNSError::Parse {
                         object: String::from("Label"),
                         message: e.to_string(),
                     }
@@ -159,7 +159,7 @@ impl FromBytes for Question {
     fn from_bytes(reader: &mut Reader) -> Result<Self> {
         // 16 for length octet +  zero length octet
         if reader.unread_bytes() < 2 + size_of::<Class>() + size_of::<Type>() {
-            Err(ParseError {
+            Err(ZNSError::Parse {
                 object: String::from("Question"),
                 message: String::from("len of bytes smaller then minimum size"),
             })
@@ -167,7 +167,7 @@ impl FromBytes for Question {
             let qname = LabelString::from_bytes(reader)?;
 
             if reader.unread_bytes() < 4 {
-                Err(ParseError {
+                Err(ZNSError::Parse {
                     object: String::from("Question"),
                     message: String::from("len of rest bytes smaller then minimum size"),
                 })
@@ -201,7 +201,7 @@ impl FromBytes for RR {
     fn from_bytes(reader: &mut Reader) -> Result<Self> {
         let name = LabelString::from_bytes(reader)?;
         if reader.unread_bytes() < size_of::<Type>() + size_of::<Class>() + 6 {
-            Err(ParseError {
+            Err(ZNSError::Parse {
                 object: String::from("RR"),
                 message: String::from("len of rest of bytes smaller then minimum size"),
             })
@@ -211,7 +211,7 @@ impl FromBytes for RR {
             let ttl = reader.read_i32()?;
             let rdlength = reader.read_u16()?;
             if reader.unread_bytes() < rdlength as usize {
-                Err(ParseError {
+                Err(ZNSError::Parse {
                     object: String::from("RR"),
                     message: String::from("len of rest of bytes not equal to rdlength"),
                 })
