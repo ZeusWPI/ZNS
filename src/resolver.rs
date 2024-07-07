@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use tokio::net::UdpSocket;
 
+use crate::db::lib::get_connection;
 use crate::errors::ZNSError;
 use crate::handlers::{Handler, ResponseHandler};
 use crate::parser::{FromBytes, ToBytes};
@@ -43,12 +44,13 @@ fn handle_parse_error(bytes: &[u8], err: ZNSError) -> Message {
 async fn get_response(bytes: &[u8]) -> Message {
     let mut reader = Reader::new(bytes);
     match Message::from_bytes(&mut reader) {
-        Ok(mut message) => match Handler::handle(&message, bytes).await {
+        Ok(mut message) => match Handler::handle(&message, bytes, &mut get_connection()).await {
             Ok(mut response) => {
                 response.set_response(RCODE::NOERROR);
                 response
             }
             Err(e) => {
+                println!("{:#?}", message);
                 eprintln!("{}", e.to_string());
                 message.set_response(e.rcode());
                 message
@@ -70,5 +72,38 @@ pub async fn resolver_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Erro
                 .send_to(Message::to_bytes(response).as_slice(), addr)
                 .await;
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::structs::{Class, Question, RRClass, RRType, Type};
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_response() {
+        let message = Message {
+            header: Header {
+                id: 1,
+                flags: 288,
+                qdcount: 1,
+                ancount: 0,
+                nscount: 0,
+                arcount: 0,
+            },
+            question: vec![Question {
+                qname: vec![String::from("example"), String::from("org")],
+                qtype: Type::Type(RRType::A),
+                qclass: Class::Class(RRClass::IN),
+            }],
+            answer: vec![],
+            authority: vec![],
+            additional: vec![],
+        };
+
+        let response = get_response(&Message::to_bytes(message)).await;
+
+        assert_eq!(response.get_rcode(), Ok(RCODE::NXDOMAIN));
     }
 }

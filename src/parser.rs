@@ -295,3 +295,151 @@ impl ToBytes for Message {
         result
     }
 }
+
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    pub fn get_rr() -> RR {
+        RR {
+            name: vec![String::from("example"), String::from("org")],
+            _type: Type::Type(RRType::A),
+            class: Class::Class(RRClass::IN),
+            ttl: 10,
+            rdlength: 4,
+            rdata: vec![1, 2, 3, 4],
+        }
+    }
+
+    pub fn get_message() -> Message {
+        Message {
+            header: Header {
+                id: 1,
+                flags: 288,
+                qdcount: 2,
+                ancount: 1,
+                nscount: 1,
+                arcount: 1,
+            },
+            question: vec![
+                Question {
+                    qname: vec![String::from("example"), String::from("org")],
+                    qtype: Type::Type(RRType::A),
+                    qclass: Class::Class(RRClass::IN),
+                },
+                Question {
+                    qname: vec![String::from("example"), String::from("org")],
+                    qtype: Type::Type(RRType::A),
+                    qclass: Class::Class(RRClass::IN),
+                },
+            ],
+            answer: vec![get_rr()],
+            authority: vec![get_rr()],
+            additional: vec![get_rr()],
+        }
+    }
+
+    #[test]
+    fn test_parse_header() {
+        let header = Header {
+            id: 1,
+            flags: 288,
+            qdcount: 1,
+            ancount: 0,
+            nscount: 0,
+            arcount: 0,
+        };
+
+        let bytes = Header::to_bytes(header.clone());
+        let parsed = Header::from_bytes(&mut Reader::new(&bytes));
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), header);
+    }
+
+    #[test]
+    fn test_parse_question() {
+        let question = Question {
+            qname: vec![String::from("example"), String::from("org")],
+            qtype: Type::Type(RRType::A),
+            qclass: Class::Class(RRClass::IN),
+        };
+
+        let bytes = Question::to_bytes(question.clone());
+        let parsed = Question::from_bytes(&mut Reader::new(&bytes));
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), question);
+    }
+
+    #[test]
+    fn test_parse_rr() {
+        let rr = get_rr();
+
+        let bytes = RR::to_bytes(rr.clone());
+        let parsed = RR::from_bytes(&mut Reader::new(&bytes));
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), rr);
+    }
+
+    #[test]
+    fn test_labelstring() {
+        let labelstring = vec![String::from("example"), String::from("org")];
+
+        let bytes = LabelString::to_bytes(labelstring.clone());
+        let parsed = LabelString::from_bytes(&mut Reader::new(&bytes));
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), labelstring);
+    }
+
+    #[test]
+    fn test_labelstring_ptr() {
+        let labelstring = vec![String::from("example"), String::from("org")];
+
+        let mut bytes = LabelString::to_bytes(labelstring.clone());
+
+        bytes.insert(0, 0);
+        bytes.insert(0, 0);
+
+        let to_read = bytes.len();
+
+        bytes.push(0b11000000);
+        bytes.push(0b00000010);
+
+        let mut reader = Reader::new(&bytes);
+        let _ = reader.read(to_read);
+
+        let parsed = LabelString::from_bytes(&mut reader);
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), labelstring);
+    }
+
+    #[test]
+    fn test_labelstring_invalid_ptr() {
+        let labelstring = vec![String::from("example"), String::from("org")];
+
+        let mut bytes = LabelString::to_bytes(labelstring.clone());
+
+        bytes.insert(0, 0);
+        bytes.insert(0, 0);
+
+        let to_read = bytes.len();
+
+        bytes.push(0b11000000);
+        // Not allowed to point to itself or in the future
+        bytes.push(to_read as u8);
+
+        let mut reader = Reader::new(&bytes);
+        let _ = reader.read(to_read);
+
+        let parsed = LabelString::from_bytes(&mut reader);
+        assert!(parsed.is_err());
+    }
+
+    #[test]
+    fn test_parse_message() {
+        let message = get_message();
+        let bytes = Message::to_bytes(message.clone());
+        let parsed = Message::from_bytes(&mut Reader::new(&bytes));
+        assert!(parsed.is_ok());
+        assert_eq!(parsed.unwrap(), message);
+    }
+}

@@ -29,6 +29,18 @@ impl PublicKey for RsaPublicKey {
         Ok(RsaPublicKey { e, n })
     }
 
+    fn from_dnskey(key: &[u8]) -> Result<Self, ZNSError>
+    where
+        Self: Sized,
+    {
+        let mut reader = Reader::new(key);
+        let e_len = reader.read_u8()?;
+        let e = reader.read(e_len as usize)?;
+        let mut n = reader.read(reader.unread_bytes())?;
+        n.insert(0, 0);
+        Ok(RsaPublicKey { e, n })
+    }
+
     fn verify(
         &self,
         data: &[u8],
@@ -47,24 +59,12 @@ impl PublicKey for RsaPublicKey {
             Algorithm::RSASHA512 => Ok(&signature::RSA_PKCS1_2048_8192_SHA512),
             Algorithm::RSASHA256 => Ok(&signature::RSA_PKCS1_2048_8192_SHA256),
             _ => Err(ZNSError::PublicKey {
-                message: format!("RsaPublicKey: invalid verify algorithm",),
+                message: String::from("RsaPublicKey: invalid verify algorithm"),
             }),
         }?;
 
         let pkey = ring::signature::UnparsedPublicKey::new(signature_type, result);
 
         Ok(pkey.verify(data, signature).is_ok())
-    }
-
-    fn from_dnskey(key: &[u8]) -> Result<Self, ZNSError>
-    where
-        Self: Sized,
-    {
-        let mut reader = Reader::new(key);
-        let e_len = reader.read_u8()?;
-        let e = reader.read(e_len as usize)?;
-        let mut n = reader.read(reader.unread_bytes())?;
-        n.insert(0, 0);
-        Ok(RsaPublicKey { e, n })
     }
 }

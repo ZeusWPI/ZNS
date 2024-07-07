@@ -1,3 +1,5 @@
+use diesel::PgConnection;
+
 use crate::{
     db::models::{delete_from_database, insert_into_database},
     errors::ZNSError,
@@ -17,7 +19,11 @@ mod sig;
 pub struct UpdateHandler {}
 
 impl ResponseHandler for UpdateHandler {
-    async fn handle(message: &Message, raw: &[u8]) -> Result<Message, ZNSError> {
+    async fn handle(
+        message: &Message,
+        raw: &[u8],
+        connection: &mut PgConnection,
+    ) -> Result<Message, ZNSError> {
         let response = message.clone();
         // Zone section (question) processing
         if (message.header.qdcount != 1)
@@ -44,7 +50,7 @@ impl ResponseHandler for UpdateHandler {
         if last.is_some() && last.unwrap()._type == Type::Type(RRType::KEY) {
             let sig = Sig::new(last.unwrap(), raw)?;
 
-            if !authenticate::authenticate(&sig, &zone.qname)
+            if !authenticate::authenticate(&sig, &zone.qname, connection)
                 .await
                 .is_ok_and(|x| x)
             {
@@ -89,7 +95,7 @@ impl ResponseHandler for UpdateHandler {
 
         for rr in &message.authority {
             if rr.class == zone.qclass {
-                let _ = insert_into_database(&rr).await;
+                let _ = insert_into_database(&rr, connection);
             } else if rr.class == Class::Class(RRClass::ANY) {
                 if rr._type == Type::Type(RRType::ANY) {
                     if rr.name == zone.qname {
@@ -98,7 +104,13 @@ impl ResponseHandler for UpdateHandler {
                             message: "rr.name == zone.qname".to_string(),
                         });
                     } else {
-                        delete_from_database(&rr.name, None, Class::Class(RRClass::IN), None).await;
+                        delete_from_database(
+                            &rr.name,
+                            None,
+                            Class::Class(RRClass::IN),
+                            None,
+                            connection,
+                        )
                     }
                 } else {
                     delete_from_database(
@@ -106,8 +118,8 @@ impl ResponseHandler for UpdateHandler {
                         Some(rr._type.clone()),
                         Class::Class(RRClass::IN),
                         None,
+                        connection,
                     )
-                    .await;
                 }
             } else if rr.class == Class::Class(RRClass::NONE) {
                 if rr._type == Type::Type(RRType::SOA) {
@@ -118,8 +130,8 @@ impl ResponseHandler for UpdateHandler {
                     Some(rr._type.clone()),
                     Class::Class(RRClass::IN),
                     Some(rr.rdata.clone()),
+                    connection,
                 )
-                .await;
             }
         }
 

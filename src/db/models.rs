@@ -6,8 +6,6 @@ use diesel::prelude::*;
 
 use self::schema::records::{self};
 
-use super::lib::establish_connection;
-
 mod schema {
     diesel::table! {
         records (name, _type, class, rdlength, rdata) {
@@ -81,8 +79,7 @@ impl Record {
     }
 }
 
-pub async fn insert_into_database(rr: &RR) -> Result<(), ZNSError> {
-    let db_connection = &mut establish_connection();
+pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<(), ZNSError> {
     let record = Record {
         name: rr.name.join("."),
         _type: rr._type.clone().into(),
@@ -92,21 +89,21 @@ pub async fn insert_into_database(rr: &RR) -> Result<(), ZNSError> {
         rdata: rr.rdata.clone(),
     };
 
-    Record::create(db_connection, record).map_err(|e| ZNSError::Database {
+    Record::create(connection, record).map_err(|e| ZNSError::Database {
         message: e.to_string(),
     })?;
 
     Ok(())
 }
 
-pub async fn get_from_database(
+pub fn get_from_database(
     name: &Vec<String>,
     _type: Type,
     class: Class,
+    connection: &mut PgConnection,
 ) -> Result<Vec<RR>, ZNSError> {
-    let db_connection = &mut establish_connection();
     let records =
-        Record::get(db_connection, name.join("."), _type.into(), class.into()).map_err(|e| {
+        Record::get(connection, name.join("."), _type.into(), class.into()).map_err(|e| {
             ZNSError::Database {
                 message: e.to_string(),
             }
@@ -128,18 +125,58 @@ pub async fn get_from_database(
 }
 
 //TODO: cleanup models
-pub async fn delete_from_database(
+pub fn delete_from_database(
     name: &Vec<String>,
     _type: Option<Type>,
     class: Class,
     rdata: Option<Vec<u8>>,
+    connection: &mut PgConnection,
 ) {
-    let db_connection = &mut establish_connection();
     let _ = Record::delete(
-        db_connection,
+        connection,
         name.join("."),
         _type.map(|f| f.into()),
         class.into(),
         rdata,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::{db::lib::tests::get_test_connection, parser::tests::get_rr};
+
+    #[test]
+    fn test() {
+        let mut connection = get_test_connection();
+
+        let rr = get_rr();
+
+        let f = |connection: &mut PgConnection| {
+            get_from_database(&rr.name, rr._type.clone(), rr.class.clone(), connection)
+        };
+
+        assert!(f(&mut connection).unwrap().is_empty());
+
+        assert!(insert_into_database(&rr, &mut connection).is_ok());
+
+        let result = f(&mut connection);
+        assert!(result.is_ok());
+        assert_eq!(result.as_ref().unwrap().len(), 1);
+        assert_eq!(result.unwrap()[0], rr);
+
+        delete_from_database(
+            &rr.name,
+            Some(rr._type.clone()),
+            rr.class.clone(),
+            Some(rr.rdata.clone()),
+            &mut connection,
+        );
+
+        assert!(f(&mut connection).unwrap().is_empty());
+
+        assert!(insert_into_database(&rr, &mut connection).is_ok());
+        assert!(insert_into_database(&rr, &mut connection).is_err());
+    }
 }

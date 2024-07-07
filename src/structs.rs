@@ -33,6 +33,7 @@ pub enum RRClass {
 
 #[repr(u16)]
 #[allow(dead_code)]
+#[derive(Debug, IntEnum, PartialEq)]
 pub enum RCODE {
     NOERROR = 0,
     FORMERR = 1,
@@ -52,14 +53,14 @@ pub enum Opcode {
     UPDATE = 5,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Question {
     pub qname: LabelString,
     pub qtype: Type,   // NOTE: should be QTYPE, right now not really needed
     pub qclass: Class, //NOTE: should be QCLASS, right now not really needed
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Header {
     pub id: u16,
     pub flags: u16, // |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   | ; 1 | 4 | 1 | 1 | 1 | 1 | 3 | 4
@@ -69,7 +70,7 @@ pub struct Header {
     pub arcount: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Message {
     pub header: Header,
     pub question: Vec<Question>,
@@ -78,20 +79,13 @@ pub struct Message {
     pub additional: Vec<RR>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RR {
     pub name: LabelString,
     pub _type: Type,
     pub class: Class,
     pub ttl: i32,
     pub rdlength: u16,
-    pub rdata: Vec<u8>,
-}
-
-#[derive(Debug, Clone)]
-pub struct OptRR {
-    pub code: u16,
-    pub length: u16,
     pub rdata: Vec<u8>,
 }
 
