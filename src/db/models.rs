@@ -35,16 +35,18 @@ impl Record {
     pub fn get(
         db: &mut PgConnection,
         name: String,
-        _type: i32,
+        _type: Option<i32>,
         class: i32,
     ) -> Result<Vec<Record>, diesel::result::Error> {
-        records::table
-            .filter(
-                records::name
-                    .eq(name)
-                    .and(records::_type.eq(_type).and(records::class.eq(class))),
-            )
-            .get_results(db)
+        let mut query = records::table.into_boxed();
+
+        query = query.filter(records::name.eq(name).and(records::class.eq(class)));
+
+        if let Some(value) = _type {
+            query = query.filter(records::_type.eq(value))
+        }
+
+        query.get_results(db)
     }
 
     pub fn create(
@@ -98,16 +100,19 @@ pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<()
 
 pub fn get_from_database(
     name: &Vec<String>,
-    _type: Type,
+    _type: Option<Type>,
     class: Class,
     connection: &mut PgConnection,
 ) -> Result<Vec<RR>, ZNSError> {
-    let records =
-        Record::get(connection, name.join("."), _type.into(), class.into()).map_err(|e| {
-            ZNSError::Database {
-                message: e.to_string(),
-            }
-        })?;
+    let records = Record::get(
+        connection,
+        name.join("."),
+        _type.map(|t| t.into()),
+        class.into(),
+    )
+    .map_err(|e| ZNSError::Database {
+        message: e.to_string(),
+    })?;
 
     Ok(records
         .into_iter()
@@ -154,7 +159,12 @@ mod tests {
         let rr = get_rr();
 
         let f = |connection: &mut PgConnection| {
-            get_from_database(&rr.name, rr._type.clone(), rr.class.clone(), connection)
+            get_from_database(
+                &rr.name,
+                Some(rr._type.clone()),
+                rr.class.clone(),
+                connection,
+            )
         };
 
         assert!(f(&mut connection).unwrap().is_empty());

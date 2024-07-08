@@ -1,11 +1,16 @@
 use diesel::PgConnection;
 
-use crate::{db::models::get_from_database, errors::ZNSError, structs::Message};
+use crate::{
+    db::models::get_from_database,
+    errors::ZNSError,
+    structs::{Message, Question, RR},
+};
 
 use super::ResponseHandler;
 
 pub struct QueryHandler {}
 
+//TODO: the clones in this file should and could be avoided
 impl ResponseHandler for QueryHandler {
     async fn handle(
         message: &Message,
@@ -18,17 +23,20 @@ impl ResponseHandler for QueryHandler {
         for question in &message.question {
             let answers = get_from_database(
                 &question.qname,
-                question.qtype.clone(),
+                Some(question.qtype.clone()),
                 question.qclass.clone(),
                 connection,
             );
 
             match answers {
-                Ok(rrs) => {
+                Ok(mut rrs) => {
                     if rrs.len() == 0 {
-                        return Err(ZNSError::NXDomain {
-                            domain: question.qname.join("."),
-                        });
+                        rrs.extend(try_wildcard(question, connection)?);
+                        if rrs.len() == 0 {
+                            return Err(ZNSError::NXDomain {
+                                domain: question.qname.join("."),
+                            });
+                        }
                     }
                     response.header.ancount += rrs.len() as u16;
                     response.answer.extend(rrs)
@@ -42,6 +50,23 @@ impl ResponseHandler for QueryHandler {
         }
 
         Ok(response)
+    }
+}
+
+fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
+    let records = get_from_database(&question.qname, None, question.qclass.clone(), connection)?;
+
+    if records.len() > 0 {
+        Ok(vec![])
+    } else {
+        let mut qname = question.qname.clone();
+        qname[0] = String::from("*");
+        get_from_database(
+            &qname,
+            Some(question.qtype.clone()),
+            question.qclass.clone(),
+            connection,
+        )
     }
 }
 

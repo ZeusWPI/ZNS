@@ -58,7 +58,7 @@ async fn validate_dnskey(
 ) -> Result<bool, ZNSError> {
     Ok(get_from_database(
         zone,
-        Type::Type(RRType::DNSKEY),
+        Some(Type::Type(RRType::DNSKEY)),
         Class::Class(RRClass::IN),
         connection,
     )?
