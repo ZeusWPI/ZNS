@@ -1,4 +1,5 @@
 use diesel::PgConnection;
+use reqwest::header::ACCEPT;
 
 use crate::{
     config::Config,
@@ -34,16 +35,20 @@ pub async fn authenticate(
 }
 
 async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Error> {
-    Ok(reqwest::get(format!(
-        "{}/users/keys/{}",
-        Config::get().zauth_url,
-        username
-    ))
-    .await?
-    .json::<Vec<String>>()
-    .await?
-    .iter()
-    .any(|key| sig.verify_ssh(&key).is_ok_and(|b| b)))
+    let client = reqwest::Client::new();
+    Ok(client
+        .get(format!(
+            "{}/users/{}/keys",
+            Config::get().zauth_url,
+            username
+        ))
+        .header(ACCEPT, "application/json")
+        .send()
+        .await?
+        .json::<Vec<String>>()
+        .await?
+        .iter()
+        .any(|key| sig.verify_ssh(&key).is_ok_and(|b| b)))
 }
 
 async fn validate_dnskey(

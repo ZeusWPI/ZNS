@@ -50,7 +50,6 @@ async fn get_response(bytes: &[u8]) -> Message {
                 response
             }
             Err(e) => {
-                println!("{:#?}", message);
                 eprintln!("{}", e.to_string());
                 message.set_response(e.rcode());
                 message

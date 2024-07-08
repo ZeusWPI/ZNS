@@ -71,7 +71,9 @@ impl<'a> Reader<'a> {
                 message: String::from("Seeking into the future is not allowed!!"),
             })
         } else {
-            Ok(Reader::new(&self.buffer[position..self.position]))
+            let mut reader = Reader::new(&self.buffer[0..self.position]);
+            reader.position = position;
+            Ok(reader)
         }
     }
 }
