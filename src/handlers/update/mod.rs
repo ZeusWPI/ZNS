@@ -1,6 +1,7 @@
 use diesel::PgConnection;
 
 use crate::{
+    config::Config,
     db::models::{delete_from_database, insert_into_database},
     errors::ZNSError,
     structs::{Class, Message, RRClass, RRType, Type},
@@ -37,7 +38,9 @@ impl ResponseHandler for UpdateHandler {
         // Check Zone authority
         let zone = &message.question[0];
         let zlen = zone.qname.len();
-        if !(zlen >= 2 && zone.qname[zlen - 1] == "gent" && zone.qname[zlen - 2] == "zeus") {
+        let auth_zone = &Config::get().authoritative_zone;
+        if !(zlen >= auth_zone.len() && vec_equal(&zone.qname[zlen - auth_zone.len()..], auth_zone))
+        {
             return Err(ZNSError::Formerr {
                 message: "Invalid zone".to_string(),
             });

@@ -17,10 +17,11 @@ pub async fn authenticate(
     zone: &Vec<String>,
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
-    if zone.len() >= 4 {
-        let username = &zone[zone.len() - 4]; // Should match: username.users.zeus.gent
+    if zone.len() >= Config::get().authoritative_zone.len() {
+        let username = &zone[zone.len() - Config::get().authoritative_zone.len() - 1];
 
-        let ssh_verified = validate_ssh(username, sig).await?;
+        let ssh_verified = validate_ssh(username, sig).await.is_ok_and(|b| b);
+
 
         if ssh_verified {
             Ok(true)
