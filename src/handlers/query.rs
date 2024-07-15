@@ -60,12 +60,18 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
     } else {
         let mut qname = question.qname.clone();
         qname[0] = String::from("*");
-        get_from_database(
+        Ok(get_from_database(
             &qname,
             Some(question.qtype.clone()),
             question.qclass.clone(),
             connection,
-        )
+        )?
+        .into_iter()
+        .map(|mut rr| {
+            rr.name = question.qname.clone();
+            rr
+        })
+        .collect())
     }
 }
 
