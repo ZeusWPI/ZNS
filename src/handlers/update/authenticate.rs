@@ -22,7 +22,6 @@ pub async fn authenticate(
 
         let ssh_verified = validate_ssh(username, sig).await.is_ok_and(|b| b);
 
-
         if ssh_verified {
             Ok(true)
         } else {

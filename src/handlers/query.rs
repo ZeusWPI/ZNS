@@ -18,7 +18,6 @@ impl ResponseHandler for QueryHandler {
         connection: &mut PgConnection,
     ) -> Result<Message, ZNSError> {
         let mut response = message.clone();
-        response.header.arcount = 0; //TODO: fix this, handle unknown class values
 
         for question in &message.question {
             let answers = get_from_database(

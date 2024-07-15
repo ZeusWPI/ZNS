@@ -2,7 +2,8 @@ use std::error::Error;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use tokio::net::UdpSocket;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpSocket, UdpSocket};
 
 use crate::db::lib::get_connection;
 use crate::errors::ZNSError;
@@ -11,7 +12,7 @@ use crate::parser::{FromBytes, ToBytes};
 use crate::reader::Reader;
 use crate::structs::{Header, Message, RCODE};
 
-const MAX_DATAGRAM_SIZE: usize = 4096;
+const MAX_DATAGRAM_SIZE: usize = 512;
 
 fn handle_parse_error(bytes: &[u8], err: ZNSError) -> Message {
     eprintln!("{}", err);
@@ -41,9 +42,9 @@ fn handle_parse_error(bytes: &[u8], err: ZNSError) -> Message {
     message
 }
 
-async fn get_response(bytes: &[u8]) -> Message {
+async fn get_response(bytes: &[u8]) -> Vec<u8> {
     let mut reader = Reader::new(bytes);
-    match Message::from_bytes(&mut reader) {
+    Message::to_bytes(match Message::from_bytes(&mut reader) {
         Ok(mut message) => match Handler::handle(&message, bytes, &mut get_connection()).await {
             Ok(mut response) => {
                 response.set_response(RCODE::NOERROR);
@@ -56,10 +57,10 @@ async fn get_response(bytes: &[u8]) -> Message {
             }
         },
         Err(err) => handle_parse_error(bytes, err),
-    }
+    })
 }
 
-pub async fn resolver_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Error>> {
+pub async fn udp_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Error>> {
     let socket_shared = Arc::new(UdpSocket::bind(addr).await?);
     loop {
         let mut data = vec![0u8; MAX_DATAGRAM_SIZE];
@@ -67,9 +68,34 @@ pub async fn resolver_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Erro
         let socket = socket_shared.clone();
         tokio::spawn(async move {
             let response = get_response(&data[..len]).await;
-            let _ = socket
-                .send_to(Message::to_bytes(response).as_slice(), addr)
-                .await;
+            // TODO: if length is larger then 512 bytes, message should be truncated
+            let _ = socket.send_to(&response, addr).await;
+        });
+    }
+}
+
+pub async fn tcp_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Error>> {
+    let socket = TcpSocket::new_v4()?;
+    socket.bind(addr)?;
+    let listener = socket.listen(1024)?;
+    loop {
+        let (mut stream, _) = listener.accept().await?;
+        tokio::spawn(async move {
+            if stream.readable().await.is_ok() {
+                if let Ok(length) = stream.read_u16().await {
+                    let mut buf = Vec::with_capacity(length as usize);
+                    if stream
+                        .try_read_buf(&mut buf)
+                        .is_ok_and(|v| v == length as usize)
+                    {
+                        let response = get_response(&buf).await;
+                        if stream.writable().await.is_ok() {
+                            let _ = stream.write_u16(response.len() as u16).await;
+                            let _ = stream.try_write(&response);
+                        }
+                    }
+                }
+            }
         });
     }
 }
@@ -102,7 +128,11 @@ mod tests {
         };
 
         let response = get_response(&Message::to_bytes(message)).await;
+        let mut reader = Reader::new(&response);
 
-        assert_eq!(response.get_rcode(), Ok(RCODE::NXDOMAIN));
+        assert_eq!(
+            Message::from_bytes(&mut reader).unwrap().get_rcode(),
+            Ok(RCODE::NXDOMAIN)
+        );
     }
 }
