@@ -57,12 +57,12 @@ impl ResponseHandler for UpdateHandler {
                 .await
                 .is_ok_and(|x| x)
             {
-                return Err(ZNSError::NotAuth {
+                return Err(ZNSError::Refused {
                     message: "Unable to verify authentication".to_string(),
                 });
             }
         } else {
-            return Err(ZNSError::NotAuth {
+            return Err(ZNSError::Refused {
                 message: "No KEY record at the end of request found".to_string(),
             });
         }

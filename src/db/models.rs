@@ -3,6 +3,7 @@ use crate::{
     structs::{Class, Type, RR},
 };
 use diesel::prelude::*;
+use diesel::sql_types::Text;
 
 use self::schema::records::{self};
 
@@ -31,6 +32,10 @@ struct Record {
     pub rdata: Vec<u8>,
 }
 
+sql_function! {
+    fn lower(x: Text) -> Text;
+}
+
 impl Record {
     pub fn get(
         db: &mut PgConnection,
@@ -40,7 +45,11 @@ impl Record {
     ) -> Result<Vec<Record>, diesel::result::Error> {
         let mut query = records::table.into_boxed();
 
-        query = query.filter(records::name.eq(name).and(records::class.eq(class)));
+        query = query.filter(
+            lower(records::name)
+                .eq(name.to_lowercase())
+                .and(records::class.eq(class)),
+        );
 
         if let Some(value) = _type {
             query = query.filter(records::_type.eq(value))

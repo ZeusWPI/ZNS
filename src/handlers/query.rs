@@ -34,6 +34,7 @@ impl ResponseHandler for QueryHandler {
                         if rrs.len() == 0 {
                             return Err(ZNSError::NXDomain {
                                 domain: question.qname.join("."),
+                                qtype: question.qtype.clone(),
                             });
                         }
                     }
@@ -55,7 +56,7 @@ impl ResponseHandler for QueryHandler {
 fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
     let records = get_from_database(&question.qname, None, question.qclass.clone(), connection)?;
 
-    if records.len() > 0 {
+    if records.len() > 0 || question.qname.len() == 0 {
         Ok(vec![])
     } else {
         let mut qname = question.qname.clone();

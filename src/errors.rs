@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::structs::RCODE;
+use crate::structs::{Type, RCODE};
 
 #[derive(Error, Debug)]
 pub enum ZNSError {
@@ -17,8 +17,8 @@ pub enum ZNSError {
 
     #[error("DNS Query Format Error: {message:?}")]
     Formerr { message: String },
-    #[error("Domain name does not exist")]
-    NXDomain { domain: String },
+    #[error("Domain name does not exist: {qtype:?} {domain:?}")]
+    NXDomain { domain: String, qtype: Type },
     #[error("NotImplemented Error for {object:?}: {message:?}")]
     NotImp { object: String, message: String },
     #[error("Authentication Error: {message:?}")]
@@ -35,10 +35,10 @@ impl ZNSError {
             }
             ZNSError::Database { .. } | ZNSError::Reqwest(_) => RCODE::SERVFAIL,
 
-            ZNSError::NotAuth { .. } | ZNSError::PublicKey { .. } => RCODE::NOTAUTH,
+            ZNSError::NotAuth { .. } => RCODE::NOTAUTH,
             ZNSError::NXDomain { .. } => RCODE::NXDOMAIN,
             ZNSError::NotImp { .. } => RCODE::NOTIMP,
-            ZNSError::Refused { .. } => RCODE::REFUSED,
+            ZNSError::Refused { .. } | ZNSError::PublicKey { .. } => RCODE::REFUSED,
         }
     }
 }
