@@ -158,32 +158,25 @@ impl ToBytes for LabelString {
 impl FromBytes for Question {
     fn from_bytes(reader: &mut Reader) -> Result<Self> {
         // 16 for length octet +  zero length octet
-        if reader.unread_bytes() < 2 + size_of::<Class>() + size_of::<Type>() {
+        let qname = LabelString::from_bytes(reader)?;
+
+        if reader.unread_bytes() < 4 {
             Err(ZNSError::Parse {
                 object: String::from("Question"),
-                message: String::from("len of bytes smaller then minimum size"),
+                message: String::from("len of rest bytes smaller then minimum size"),
             })
         } else {
-            let qname = LabelString::from_bytes(reader)?;
+            //Try Parse qtype
+            let qtype = Type::from(reader.read_u16()?);
 
-            if reader.unread_bytes() < 4 {
-                Err(ZNSError::Parse {
-                    object: String::from("Question"),
-                    message: String::from("len of rest bytes smaller then minimum size"),
-                })
-            } else {
-                //Try Parse qtype
-                let qtype = Type::from(reader.read_u16()?);
+            //Try Parse qclass
+            let qclass = Class::from(reader.read_u16()?);
 
-                //Try Parse qclass
-                let qclass = Class::from(reader.read_u16()?);
-
-                Ok(Question {
-                    qname,
-                    qtype,
-                    qclass,
-                })
-            }
+            Ok(Question {
+                qname,
+                qtype,
+                qclass,
+            })
         }
     }
 }
@@ -200,31 +193,24 @@ impl ToBytes for Question {
 impl FromBytes for RR {
     fn from_bytes(reader: &mut Reader) -> Result<Self> {
         let name = LabelString::from_bytes(reader)?;
-        if reader.unread_bytes() < size_of::<Type>() + size_of::<Class>() + 6 {
+        let _type = Type::from(reader.read_u16()?);
+        let class = Class::from(reader.read_u16()?);
+        let ttl = reader.read_i32()?;
+        let rdlength = reader.read_u16()?;
+        if reader.unread_bytes() < rdlength as usize {
             Err(ZNSError::Parse {
                 object: String::from("RR"),
-                message: String::from("len of rest of bytes smaller then minimum size"),
+                message: String::from("len of rest of bytes not equal to rdlength"),
             })
         } else {
-            let _type = Type::from(reader.read_u16()?);
-            let class = Class::from(reader.read_u16()?);
-            let ttl = reader.read_i32()?;
-            let rdlength = reader.read_u16()?;
-            if reader.unread_bytes() < rdlength as usize {
-                Err(ZNSError::Parse {
-                    object: String::from("RR"),
-                    message: String::from("len of rest of bytes not equal to rdlength"),
-                })
-            } else {
-                Ok(RR {
-                    name,
-                    _type,
-                    class,
-                    ttl,
-                    rdlength,
-                    rdata: reader.read(rdlength as usize)?,
-                })
-            }
+            Ok(RR {
+                name,
+                _type,
+                class,
+                ttl,
+                rdlength,
+                rdata: reader.read(rdlength as usize)?,
+            })
         }
     }
 }
