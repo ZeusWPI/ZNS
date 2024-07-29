@@ -1,0 +1,9 @@
+[package]
+name = "zns-cli"
+version = "0.1.0"
+edition = "2021"
+
+
+[dependencies.zns]
+version = "0.1.0"
+path = "../zns"

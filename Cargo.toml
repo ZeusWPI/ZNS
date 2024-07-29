@@ -1,15 +1,7 @@
-[package]
-name = "zeusns"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-[dependencies]
-diesel = { version = "2.1.4", features = ["postgres"] }
-dotenvy = "0.15"
-tokio = {version = "1.36.0", features = ["macros","rt-multi-thread","net"], default-features = false}
-ring = "0.17.8"
-base64 = "0.22.0"
-reqwest = {version = "0.12.4", features = ["json","default"]}
-asn1 = "0.16.2"
-int-enum = "1.1"
-thiserror = "1.0"
+members = [
+    "zns",
+    "zns-cli",
+    "zns-daemon",
+]
