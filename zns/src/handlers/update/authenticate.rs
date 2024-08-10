@@ -18,6 +18,7 @@ pub async fn authenticate(
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
     if zone.len() >= Config::get().authoritative_zone.len() {
+        //TODO: panic? subtract
         let username = &zone[zone.len() - Config::get().authoritative_zone.len() - 1];
 
         let ssh_verified = validate_ssh(username, sig).await.is_ok_and(|b| b);

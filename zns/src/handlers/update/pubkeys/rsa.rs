@@ -51,14 +51,14 @@ impl PublicKey for RsaPublicKey {
             n: asn1::BigInt::new(&self.n),
             e: asn1::BigInt::new(&self.e),
         })
-        .map_err(|e| ZNSError::PublicKey {
+        .map_err(|e| ZNSError::Key {
             message: format!("Verify Error: {}", e),
         })?;
 
         let signature_type = match algorithm {
             Algorithm::RSASHA512 => Ok(&signature::RSA_PKCS1_2048_8192_SHA512),
             Algorithm::RSASHA256 => Ok(&signature::RSA_PKCS1_2048_8192_SHA256),
-            _ => Err(ZNSError::PublicKey {
+            _ => Err(ZNSError::Key {
                 message: String::from("RsaPublicKey: invalid verify algorithm"),
             }),
         }?;

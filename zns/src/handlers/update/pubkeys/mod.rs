@@ -17,7 +17,7 @@ pub trait PublicKey {
     fn verify_ssh_type(reader: &mut Reader, key_type: &str) -> Result<(), ZNSError> {
         let type_size = reader.read_i32()?;
         let read = reader.read(type_size as usize)?;
-        let algo_type = from_utf8(&read).map_err(|e| ZNSError::PublicKey {
+        let algo_type = from_utf8(&read).map_err(|e| ZNSError::Key {
             message: format!(
                 "Could not convert type name bytes to string: {}",
                 e.to_string()
@@ -27,7 +27,7 @@ pub trait PublicKey {
         if algo_type == key_type {
             Ok(())
         } else {
-            Err(ZNSError::PublicKey {
+            Err(ZNSError::Key {
                 message: String::from("ssh key type does not match identifier"),
             })
         }

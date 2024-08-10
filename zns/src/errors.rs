@@ -10,8 +10,8 @@ pub enum ZNSError {
     Database { message: String },
     #[error("Reader Error: {message:?}")]
     Reader { message: String },
-    #[error("PublicKey Error: {message:?}")]
-    PublicKey { message: String },
+    #[error("Key Error: {message:?}")]
+    Key { message: String },
     #[error("Reqwest error")]
     Reqwest(#[from] reqwest::Error),
 
@@ -38,7 +38,7 @@ impl ZNSError {
             ZNSError::NotAuth { .. } => RCODE::NOTAUTH,
             ZNSError::NXDomain { .. } => RCODE::NXDOMAIN,
             ZNSError::NotImp { .. } => RCODE::NOTIMP,
-            ZNSError::Refused { .. } | ZNSError::PublicKey { .. } => RCODE::REFUSED,
+            ZNSError::Refused { .. } | ZNSError::Key { .. } => RCODE::REFUSED,
         }
     }
 }
