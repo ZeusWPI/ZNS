@@ -1,9 +1,9 @@
 use diesel::PgConnection;
 use reqwest::header::ACCEPT;
 
-use crate::{
-    config::Config,
-    db::models::get_from_database,
+use crate::{config::Config, db::models::get_from_database};
+
+use zns::{
     errors::ZNSError,
     parser::FromBytes,
     reader::Reader,

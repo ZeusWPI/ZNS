@@ -1,10 +1,11 @@
 use diesel::PgConnection;
 
-use crate::{
-    db::models::get_from_database,
+use zns::{
     errors::ZNSError,
     structs::{Message, Question, RR},
 };
+
+use crate::db::models::get_from_database;
 
 use super::ResponseHandler;
 
@@ -42,7 +43,7 @@ impl ResponseHandler for QueryHandler {
                     response.answer.extend(rrs)
                 }
                 Err(e) => {
-                    return Err(ZNSError::Database {
+                    return Err(ZNSError::Servfail {
                         message: e.to_string(),
                     })
                 }
@@ -79,12 +80,11 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::tests::get_message;
-    use crate::structs::*;
 
-    use crate::{
-        db::{lib::tests::get_test_connection, models::insert_into_database},
-        parser::{tests::get_rr, ToBytes},
+    use crate::db::{lib::tests::get_test_connection, models::insert_into_database};
+    use zns::{
+        parser::ToBytes,
+        test_utils::{get_message, get_rr},
     };
 
     #[tokio::test]

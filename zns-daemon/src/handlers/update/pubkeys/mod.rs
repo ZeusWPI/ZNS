@@ -2,8 +2,7 @@ mod ed25519;
 mod rsa;
 use std::str::from_utf8;
 
-use crate::errors::ZNSError;
-use crate::reader::Reader;
+use zns::{errors::ZNSError, reader::Reader};
 
 pub use self::ed25519::Ed25519PublicKey;
 pub use self::rsa::RsaPublicKey;

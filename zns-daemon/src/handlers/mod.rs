@@ -1,6 +1,6 @@
 use diesel::PgConnection;
 
-use crate::{
+use zns::{
     errors::ZNSError,
     structs::{Message, Opcode},
 };

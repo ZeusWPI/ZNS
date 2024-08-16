@@ -1,7 +1,7 @@
 use base64::prelude::*;
 use int_enum::IntEnum;
 
-use crate::{
+use zns::{
     errors::ZNSError,
     parser::FromBytes,
     reader::Reader,

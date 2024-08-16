@@ -1,9 +1,14 @@
 use std::{error::Error, net::SocketAddr};
 
-use config::Config;
-use zns::config;
+mod config;
+mod resolver;
+mod db;
+mod handlers;
+mod utils;
 
-use zns::resolver::{tcp_listener_loop, udp_listener_loop};
+use config::Config;
+
+use crate::resolver::{tcp_listener_loop, udp_listener_loop};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {

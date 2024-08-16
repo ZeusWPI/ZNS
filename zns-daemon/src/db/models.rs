@@ -1,9 +1,9 @@
-use crate::{
+use diesel::prelude::*;
+use diesel::sql_types::Text;
+use zns::{
     errors::ZNSError,
     structs::{Class, Type, RR},
 };
-use diesel::prelude::*;
-use diesel::sql_types::Text;
 
 use self::schema::records::{self};
 
@@ -100,7 +100,7 @@ pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<()
         rdata: rr.rdata.clone(),
     };
 
-    Record::create(connection, record).map_err(|e| ZNSError::Database {
+    Record::create(connection, record).map_err(|e| ZNSError::Servfail {
         message: e.to_string(),
     })?;
 
@@ -119,7 +119,7 @@ pub fn get_from_database(
         _type.map(|t| t.into()),
         class.into(),
     )
-    .map_err(|e| ZNSError::Database {
+    .map_err(|e| ZNSError::Servfail {
         message: e.to_string(),
     })?;
 
@@ -157,9 +157,12 @@ pub fn delete_from_database(
 
 #[cfg(test)]
 mod tests {
+
+    use zns::test_utils::get_rr;
+
     use super::*;
 
-    use crate::{db::lib::tests::get_test_connection, parser::tests::get_rr};
+    use crate::db::lib::tests::get_test_connection;
 
     #[test]
     fn test() {

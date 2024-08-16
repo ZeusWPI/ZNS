@@ -1643,15 +1643,10 @@ checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
 name = "zns"
 version = "0.1.0"
 dependencies = [
- "asn1",
  "base64",
- "diesel",
- "dotenvy",
  "int-enum",
- "reqwest",
- "ring",
  "thiserror",
- "tokio",
+ "zns",
 ]
 
 [[package]]
@@ -1669,6 +1664,13 @@ dependencies = [
 name = "zns-daemon"
 version = "0.1.0"
 dependencies = [
+ "asn1",
+ "base64",
+ "diesel",
+ "dotenvy",
+ "int-enum",
+ "reqwest",
+ "ring",
  "tokio",
  "zns",
 ]

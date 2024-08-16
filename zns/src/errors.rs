@@ -6,15 +6,12 @@ use crate::structs::{Type, RCODE};
 pub enum ZNSError {
     #[error("Parse Error for {object:?}: {message:?}")]
     Parse { object: String, message: String },
-    #[error("Database Error: {message:?}")]
-    Database { message: String },
     #[error("Reader Error: {message:?}")]
     Reader { message: String },
     #[error("Key Error: {message:?}")]
     Key { message: String },
-    #[error("Reqwest error")]
-    Reqwest(#[from] reqwest::Error),
-
+    #[error("Server error")]
+    Servfail { message: String },
     #[error("DNS Query Format Error: {message:?}")]
     Formerr { message: String },
     #[error("Domain name does not exist: {qtype:?} {domain:?}")]
@@ -33,8 +30,7 @@ impl ZNSError {
             ZNSError::Formerr { .. } | ZNSError::Parse { .. } | ZNSError::Reader { .. } => {
                 RCODE::FORMERR
             }
-            ZNSError::Database { .. } | ZNSError::Reqwest(_) => RCODE::SERVFAIL,
-
+            ZNSError::Servfail { .. } => RCODE::SERVFAIL,
             ZNSError::NotAuth { .. } => RCODE::NOTAUTH,
             ZNSError::NXDomain { .. } => RCODE::NXDOMAIN,
             ZNSError::NotImp { .. } => RCODE::NOTIMP,

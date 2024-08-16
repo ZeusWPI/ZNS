@@ -1,6 +1,6 @@
+use crate::handlers::update::sig::Algorithm;
 use ring::signature;
-
-use crate::{errors::ZNSError, handlers::update::sig::Algorithm, reader::Reader};
+use zns::{errors::ZNSError, reader::Reader};
 
 use super::{PublicKey, SSH_RSA};
 

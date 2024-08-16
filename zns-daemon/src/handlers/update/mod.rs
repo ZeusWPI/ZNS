@@ -3,10 +3,11 @@ use diesel::PgConnection;
 use crate::{
     config::Config,
     db::models::{delete_from_database, insert_into_database},
-    errors::ZNSError,
-    structs::{Class, Message, RRClass, RRType, Type},
     utils::vec_equal,
 };
+
+use zns::errors::ZNSError;
+use zns::structs::{Class, Message, RRClass, RRType, Type};
 
 use self::sig::Sig;
 

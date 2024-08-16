@@ -4,13 +4,13 @@ use std::sync::Arc;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpSocket, UdpSocket};
+use zns::errors::ZNSError;
+use zns::parser::{FromBytes, ToBytes};
+use zns::reader::Reader;
+use zns::structs::{Header, Message, RCODE};
 
 use crate::db::lib::get_connection;
-use crate::errors::ZNSError;
 use crate::handlers::{Handler, ResponseHandler};
-use crate::parser::{FromBytes, ToBytes};
-use crate::reader::Reader;
-use crate::structs::{Header, Message, RCODE};
 
 const MAX_DATAGRAM_SIZE: usize = 512;
 
@@ -102,7 +102,7 @@ pub async fn tcp_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Error>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::structs::{Class, Question, RRClass, RRType, Type};
+    use zns::structs::{Class, Question, RRClass, RRType, Type};
 
     use super::*;
 

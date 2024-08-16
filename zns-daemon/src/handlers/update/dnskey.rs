@@ -1,9 +1,10 @@
-use crate::{errors::ZNSError, parser::FromBytes, reader::Reader};
+use zns::{errors::ZNSError, parser::FromBytes, reader::Reader};
 
 use super::sig::Algorithm;
 
 /// https://datatracker.ietf.org/doc/html/rfc4034#section-2
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct DNSKeyRData {
     pub flags: u16,
     pub protocol: u8,
