@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use base64::prelude::*;
 use int_enum::IntEnum;
 
@@ -19,6 +21,7 @@ pub struct Sig {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct SigRData {
     type_covered: u16,
     algo: Algorithm,
@@ -79,6 +82,25 @@ impl Sig {
 
         let mut reader = Reader::new(&rr.rdata);
         let key_rdata = SigRData::from_bytes(&mut reader)?;
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| ZNSError::Servfail {
+                message: e.to_string(),
+            })?
+            .as_secs();
+
+        if (key_rdata.signature_inception as u64) > now {
+            return Err(ZNSError::Refused {
+                message: String::from("invalid signature inception time"),
+            });
+        }
+
+        if (key_rdata.signature_expiration as u64) < now {
+            return Err(ZNSError::Refused {
+                message: String::from("signature has expired"),
+            });
+        }
 
         let mut raw_data = rr.rdata[0..rr.rdata.len() - key_rdata.signature.len()].to_vec();
         raw_data.extend(request);
