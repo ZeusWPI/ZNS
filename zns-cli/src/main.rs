@@ -1,5 +1,5 @@
 use base64::prelude::*;
-use num_bigint::BigUint;
+use num_bigint::{BigInt, BigUint};
 use num_traits::FromPrimitive;
 use std::error::Error;
 use std::fs::{self, File};
@@ -120,9 +120,9 @@ impl KeyTransformer for RSAKeyPair {
 
         let public_exponent = read_bytes(reader)?;
         let private_exponent = read_bytes(reader)?;
+        let coefficient = read_bytes(reader)?;
         let prime1 = read_bytes(reader)?;
         let prime2 = read_bytes(reader)?;
-        let coefficient = read_bytes(reader)?;
 
         let d = BigUint::from_bytes_be(&private_exponent);
         let p = BigUint::from_bytes_be(&prime1);
@@ -239,6 +239,7 @@ impl KeyTransformer for OpenSSHKey {
         }?;
 
         let length = reader.read_u32()?;
+        println!("{}", length);
         reader.read(length as usize)?;
 
         Ok(Self {
@@ -257,8 +258,23 @@ impl KeyTransformer for OpenSSHKey {
     }
 }
 
-fn ssh_to_dnskey(file_content: String, username: &str) -> Result<(), Box<dyn Error>> {
-    let bin = BASE64_STANDARD.decode(file_content.trim())?;
+const OPENSSH_START: &str = "-----BEGIN OPENSSH PRIVATE KEY-----";
+const OPENSSH_END: &str = "-----END OPENSSH PRIVATE KEY-----";
+
+fn ssh_to_dnskey(file_content: &str, username: &str) -> Result<(), Box<dyn Error>> {
+    if !file_content.starts_with(OPENSSH_START) || !file_content.ends_with(OPENSSH_END) {
+        Err(ZNSError::Key {
+            message: format!(
+                "file should start with {} and end with {}",
+                OPENSSH_START, OPENSSH_END
+            ),
+        })?
+    }
+
+    let key_encoded = &file_content[OPENSSH_START.len()..file_content.len() - OPENSSH_END.len()]
+        .replace("\n", "");
+
+    let bin = BASE64_STANDARD.decode(key_encoded)?;
     let mut reader = Reader::new(&bin);
     let key = OpenSSHKey::from_openssh(&mut reader)?;
 
@@ -276,7 +292,7 @@ fn main() {
     let args = Args::parse();
 
     match fs::read_to_string(args.key) {
-        Ok(contents) => match ssh_to_dnskey(contents, &args.username) {
+        Ok(contents) => match ssh_to_dnskey(contents.trim(), &args.username) {
             Ok(()) => println!("Success"),
             Err(error) => eprintln!("{}", error),
         },
