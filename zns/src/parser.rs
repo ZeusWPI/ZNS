@@ -131,6 +131,13 @@ impl FromBytes for LabelString {
                 })?,
             );
             code = reader.read_u8()?;
+
+            // Set maximum number of labels.
+            if out.len() > 255 {
+                return Err(ZNSError::Refused {
+                    message: String::from("Exceeded maximum number of labels"),
+                });
+            }
         }
 
         if code & 0b11000000 != 0 {

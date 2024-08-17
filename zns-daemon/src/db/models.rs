@@ -1,3 +1,5 @@
+use std::fmt::format;
+
 use diesel::prelude::*;
 use diesel::sql_types::Text;
 use zns::{
@@ -90,7 +92,18 @@ impl Record {
     }
 }
 
+const MAX_RDATA_SIZE: usize = 1000;
+
 pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<(), ZNSError> {
+    if rr.rdata.len() > MAX_RDATA_SIZE {
+        return Err(ZNSError::Refused {
+            message: format!(
+                "RDATA size of record is bigger then maximum limit: {}",
+                MAX_RDATA_SIZE
+            ),
+        });
+    }
+
     let record = Record {
         name: rr.name.join("."),
         _type: rr._type.clone().into(),

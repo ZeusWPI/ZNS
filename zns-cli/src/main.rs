@@ -239,7 +239,6 @@ impl KeyTransformer for OpenSSHKey {
         }?;
 
         let length = reader.read_u32()?;
-        println!("{}", length);
         reader.read(length as usize)?;
 
         Ok(Self {
