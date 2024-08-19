@@ -51,7 +51,7 @@ impl ResponseHandler for UpdateHandler {
 
         //TODO: this code is ugly
         let last = message.additional.last();
-        if last.is_some() && last.unwrap()._type == Type::Type(RRType::KEY) {
+        if last.is_some() && last.unwrap()._type == Type::Type(RRType::SIG) {
             let sig = Sig::new(last.unwrap(), raw)?;
 
             if !authenticate::authenticate(&sig, &zone.qname, connection)

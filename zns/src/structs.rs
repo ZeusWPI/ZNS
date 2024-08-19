@@ -11,7 +11,7 @@ pub enum Type {
 pub enum RRType {
     A = 1,
     SOA = 6,
-    KEY = 24, //TODO: change to SIG
+    SIG = 24,
     DNSKEY = 48,
     OPT = 41,
     ANY = 255,

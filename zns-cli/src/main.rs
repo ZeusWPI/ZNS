@@ -1,5 +1,5 @@
 use base64::prelude::*;
-use num_bigint::{BigInt, BigUint};
+use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use std::error::Error;
 use std::fs::{self, File};
@@ -76,7 +76,7 @@ fn read_bytes(reader: &mut Reader) -> Result<Vec<u8>, ZNSError> {
 
 impl KeyTransformer for Ed25519KeyPair {
     fn from_openssh(reader: &mut Reader) -> Result<Self, ZNSError> {
-        // public key parts
+        // public key parts//TODO: change to SIG
         let length = reader.read_u32()?;
         reader.read(length as usize)?;
 
@@ -259,6 +259,7 @@ impl KeyTransformer for OpenSSHKey {
 
 const OPENSSH_START: &str = "-----BEGIN OPENSSH PRIVATE KEY-----";
 const OPENSSH_END: &str = "-----END OPENSSH PRIVATE KEY-----";
+const FILENAME: &str = "Kdns";
 
 fn ssh_to_dnskey(file_content: &str, username: &str) -> Result<(), Box<dyn Error>> {
     if !file_content.starts_with(OPENSSH_START) || !file_content.ends_with(OPENSSH_END) {
@@ -277,8 +278,8 @@ fn ssh_to_dnskey(file_content: &str, username: &str) -> Result<(), Box<dyn Error
     let mut reader = Reader::new(&bin);
     let key = OpenSSHKey::from_openssh(&mut reader)?;
 
-    let mut file_private = File::create("Kdns.private")?;
-    let mut file_public = File::create("Kdns.key")?;
+    let mut file_private = File::create(format!("{}.private", FILENAME))?;
+    let mut file_public = File::create(format!("{}.key", FILENAME))?;
 
     let (private, public) = key.to_dnskey(username);
     file_private.write(private.as_bytes())?;
@@ -292,7 +293,10 @@ fn main() {
 
     match fs::read_to_string(args.key) {
         Ok(contents) => match ssh_to_dnskey(contents.trim(), &args.username) {
-            Ok(()) => println!("Success"),
+            Ok(()) => println!(
+                "Successfully written {}.private and {}.key",
+                FILENAME, FILENAME
+            ),
             Err(error) => eprintln!("{}", error),
         },
         Err(error) => eprintln!("{}", error),
