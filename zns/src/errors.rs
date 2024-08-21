@@ -10,7 +10,7 @@ pub enum ZNSError {
     Reader { message: String },
     #[error("Key Error: {message:?}")]
     Key { message: String },
-    #[error("Server error")]
+    #[error("Server error: {message:?}")]
     Servfail { message: String },
     #[error("DNS Query Format Error: {message:?}")]
     Formerr { message: String },

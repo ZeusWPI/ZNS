@@ -21,7 +21,11 @@ pub async fn authenticate(
         //TODO: panic? subtract
         let username = &zone[zone.len() - Config::get().authoritative_zone.len() - 1];
 
-        let ssh_verified = validate_ssh(username, sig).await.is_ok_and(|b| b);
+        let ssh_verified = validate_ssh(username, sig)
+            .await
+            .map_err(|e| ZNSError::Servfail {
+                message: e.to_string(),
+            })?;
 
         if ssh_verified {
             Ok(true)
@@ -49,7 +53,13 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Err
         .json::<Vec<String>>()
         .await?
         .iter()
-        .any(|key| sig.verify_ssh(&key).is_ok_and(|b| b)))
+        .any(|key| match sig.verify_ssh(&key) {
+            Ok(value) => value,
+            Err(e) => {
+                eprintln!("{}", e);
+                false
+            }
+        }))
 }
 
 async fn validate_dnskey(
@@ -66,7 +76,12 @@ async fn validate_dnskey(
     .iter()
     .any(|rr| {
         let mut reader = Reader::new(&rr.rdata);
-        DNSKeyRData::from_bytes(&mut reader)
-            .is_ok_and(|dnskey| sig.verify_dnskey(dnskey).is_ok_and(|b| b))
+        DNSKeyRData::from_bytes(&mut reader).is_ok_and(|dnskey| match sig.verify_dnskey(dnskey) {
+            Ok(value) => value,
+            Err(e) => {
+                eprintln!("{}", e);
+                false
+            }
+        })
     }))
 }

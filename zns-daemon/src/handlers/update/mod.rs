@@ -54,10 +54,7 @@ impl ResponseHandler for UpdateHandler {
         if last.is_some() && last.unwrap()._type == Type::Type(RRType::SIG) {
             let sig = Sig::new(last.unwrap(), raw)?;
 
-            if !authenticate::authenticate(&sig, &zone.qname, connection)
-                .await
-                .is_ok_and(|x| x)
-            {
+            if !authenticate::authenticate(&sig, &zone.qname, connection).await? {
                 return Err(ZNSError::Refused {
                     message: "Unable to verify authentication".to_string(),
                 });
