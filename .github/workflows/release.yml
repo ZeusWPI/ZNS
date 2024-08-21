@@ -2,9 +2,6 @@ on:
   release:
     types: [created]
 
-permissions:
-  contents: write
-
 jobs:
   release:
     name: release ${{ matrix.target }}
