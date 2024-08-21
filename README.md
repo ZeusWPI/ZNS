@@ -44,6 +44,7 @@ zns-cli --key <path to private ssh key> --username <zauth username>
 Now you can run `nsupdate -k Kdns.private`.
 
 ```
+> server flanagan.zeus.gent
 > zone username.users.zeus.gent
 > update add username.users.zeus.gent 300 A <ip address>
 > send
