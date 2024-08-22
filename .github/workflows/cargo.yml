@@ -5,7 +5,13 @@ on:
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/cargo.yml
+      - '**/*.rs'
   pull_request:
+    paths:
+      - .github/workflows/cargo.yml
+      - '**/*.rs'
   workflow_dispatch:
 
 env:
