@@ -4,10 +4,11 @@ on:
   push:
     branches:
       - main
-  paths:
-    - '**/*.rs'
-    - Dockerfile
-    - Cargo.lock
+    paths:
+      - .github/workflows/docker.yml
+      - '**/*.rs'
+      - Dockerfile
+      - Cargo.lock
 
 concurrency:
   group: docker-main
