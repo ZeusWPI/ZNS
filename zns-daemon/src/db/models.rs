@@ -1,5 +1,3 @@
-use std::fmt::format;
-
 use diesel::prelude::*;
 use diesel::sql_types::Text;
 use zns::{
@@ -34,7 +32,7 @@ struct Record {
     pub rdata: Vec<u8>,
 }
 
-sql_function! {
+define_sql_function! {
     fn lower(x: Text) -> Text;
 }
 
@@ -121,7 +119,7 @@ pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<()
 }
 
 pub fn get_from_database(
-    name: &Vec<String>,
+    name: &[String],
     _type: Option<Type>,
     class: Class,
     connection: &mut PgConnection,
@@ -138,22 +136,20 @@ pub fn get_from_database(
 
     Ok(records
         .into_iter()
-        .filter_map(|record| {
-            Some(RR {
-                name: record.name.split(".").map(str::to_string).collect(),
-                _type: Type::from(record._type as u16),
-                class: Class::from(record.class as u16),
-                ttl: record.ttl,
-                rdlength: record.rdlength as u16,
-                rdata: record.rdata,
-            })
+        .map(|record| RR {
+            name: record.name.split('.').map(str::to_string).collect(),
+            _type: Type::from(record._type as u16),
+            class: Class::from(record.class as u16),
+            ttl: record.ttl,
+            rdlength: record.rdlength as u16,
+            rdata: record.rdata,
         })
         .collect())
 }
 
 //TODO: cleanup models
 pub fn delete_from_database(
-    name: &Vec<String>,
+    name: &[String],
     _type: Option<Type>,
     class: Class,
     rdata: Option<Vec<u8>>,

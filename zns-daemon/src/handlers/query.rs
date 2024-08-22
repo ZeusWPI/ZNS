@@ -30,9 +30,9 @@ impl ResponseHandler for QueryHandler {
 
             match answers {
                 Ok(mut rrs) => {
-                    if rrs.len() == 0 {
+                    if rrs.is_empty() {
                         rrs.extend(try_wildcard(question, connection)?);
-                        if rrs.len() == 0 {
+                        if rrs.is_empty() {
                             return Err(ZNSError::NXDomain {
                                 domain: question.qname.join("."),
                                 qtype: question.qtype.clone(),
@@ -57,7 +57,7 @@ impl ResponseHandler for QueryHandler {
 fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
     let records = get_from_database(&question.qname, None, question.qclass.clone(), connection)?;
 
-    if records.len() > 0 || question.qname.len() == 0 {
+    if !records.is_empty() || question.qname.is_empty() {
         Ok(vec![])
     } else {
         let mut qname = question.qname.clone();
@@ -70,7 +70,7 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
         )?
         .into_iter()
         .map(|mut rr| {
-            rr.name = question.qname.clone();
+            rr.name.clone_from(&question.qname);
             rr
         })
         .collect())

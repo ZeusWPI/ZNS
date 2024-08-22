@@ -48,7 +48,7 @@ struct RSAKeyPair {
 
 enum KeyPair {
     ED255519(Ed25519KeyPair),
-    RSA(RSAKeyPair),
+    Rsa(RSAKeyPair),
 }
 
 #[allow(dead_code)]
@@ -63,7 +63,7 @@ fn read_string(reader: &mut Reader) -> Result<String, ZNSError> {
     let length = reader.read_u32()?;
     let data = reader.read(length as usize)?;
     let result = from_utf8(&data).map_err(|e| ZNSError::Key {
-        message: format!("Wrong ciphername format: {}", e.to_string()),
+        message: format!("Wrong ciphername format: {}", e),
     })?;
     Ok(result.to_owned())
 }
@@ -190,7 +190,7 @@ impl KeyTransformer for OpenSSHKey {
 
         let buf = reader.read(14)?;
         let magic = from_utf8(&buf).map_err(|e| ZNSError::Key {
-            message: format!("Not valid ASCII: {}", e.to_string()),
+            message: format!("Not valid ASCII: {}", e),
         })?;
 
         if magic != "openssh-key-v1" {
@@ -232,7 +232,7 @@ impl KeyTransformer for OpenSSHKey {
 
         let keypair = match keytype.as_str() {
             "ssh-ed25519" => Ok(KeyPair::ED255519(Ed25519KeyPair::from_openssh(reader)?)),
-            "ssh-rsa" => Ok(KeyPair::RSA(RSAKeyPair::from_openssh(reader)?)),
+            "ssh-rsa" => Ok(KeyPair::Rsa(RSAKeyPair::from_openssh(reader)?)),
             other => Err(ZNSError::Key {
                 message: format!("Invalid public keytype {}", other),
             }),
@@ -252,7 +252,7 @@ impl KeyTransformer for OpenSSHKey {
     fn to_dnskey(&self, username: &str) -> (String, String) {
         match &self.keypair {
             KeyPair::ED255519(keypair) => keypair.to_dnskey(username),
-            KeyPair::RSA(keypair) => keypair.to_dnskey(username),
+            KeyPair::Rsa(keypair) => keypair.to_dnskey(username),
         }
     }
 }
@@ -272,7 +272,7 @@ fn ssh_to_dnskey(file_content: &str, username: &str) -> Result<(), Box<dyn Error
     }
 
     let key_encoded = &file_content[OPENSSH_START.len()..file_content.len() - OPENSSH_END.len()]
-        .replace("\n", "");
+        .replace('\n', "");
 
     let bin = BASE64_STANDARD.decode(key_encoded)?;
     let mut reader = Reader::new(&bin);
@@ -282,8 +282,8 @@ fn ssh_to_dnskey(file_content: &str, username: &str) -> Result<(), Box<dyn Error
     let mut file_public = File::create(format!("{}.key", FILENAME))?;
 
     let (private, public) = key.to_dnskey(username);
-    file_private.write(private.as_bytes())?;
-    file_public.write(public.as_bytes())?;
+    file_private.write_all(private.as_bytes())?;
+    file_public.write_all(public.as_bytes())?;
 
     Ok(())
 }

@@ -27,7 +27,7 @@ impl Config {
                 zauth_url: env::var("ZAUTH_URL").expect("ZAUTH_URL must be set"),
                 authoritative_zone: env::var("ZONE")
                     .expect("ZONE must be set")
-                    .split(".")
+                    .split('.')
                     .map(str::to_string)
                     .collect(),
                 port: env::var("ZNS_PORT")

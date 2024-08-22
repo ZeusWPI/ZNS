@@ -14,7 +14,7 @@ use super::{dnskey::DNSKeyRData, sig::Sig};
 
 pub async fn authenticate(
     sig: &Sig,
-    zone: &Vec<String>,
+    zone: &[String],
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
     if zone.len() >= Config::get().authoritative_zone.len() {
@@ -53,7 +53,7 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Err
         .json::<Vec<String>>()
         .await?
         .iter()
-        .any(|key| match sig.verify_ssh(&key) {
+        .any(|key| match sig.verify_ssh(key) {
             Ok(value) => value,
             Err(e) => {
                 eprintln!("{}", e);
@@ -63,7 +63,7 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Err
 }
 
 async fn validate_dnskey(
-    zone: &Vec<String>,
+    zone: &[String],
     sig: &Sig,
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {

@@ -51,7 +51,7 @@ async fn get_response(bytes: &[u8]) -> Vec<u8> {
                 response
             }
             Err(e) => {
-                eprintln!("{}", e.to_string());
+                eprintln!("{}", e);
                 message.set_response(e.rcode());
                 message
             }

@@ -2,8 +2,8 @@ use crate::structs::{Message, Opcode, RCODE};
 
 impl Message {
     pub fn set_response(&mut self, rcode: RCODE) {
-        self.header.flags = (self.header.flags | 0b1_0000_1_0_0_0_000_0000 | rcode as u16)
-            & 0b1_1111_1_0_1_0_111_1111
+        self.header.flags =
+            (self.header.flags | 0b1000_0100_0000_0000 | rcode as u16) & 0b1111_1101_0111_1111
     }
 
     pub fn get_opcode(&self) -> Result<Opcode, String> {

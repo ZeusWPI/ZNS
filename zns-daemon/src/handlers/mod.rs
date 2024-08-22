@@ -29,8 +29,8 @@ impl ResponseHandler for Handler {
         match message.get_opcode() {
             //TODO: implement this in Opcode
             Ok(opcode) => match opcode {
-                Opcode::QUERY => QueryHandler::handle(&message, raw, connection).await,
-                Opcode::UPDATE => UpdateHandler::handle(&message, raw, connection).await,
+                Opcode::QUERY => QueryHandler::handle(message, raw, connection).await,
+                Opcode::UPDATE => UpdateHandler::handle(message, raw, connection).await,
             },
             Err(e) => Err(ZNSError::Formerr {
                 message: e.to_string(),

@@ -96,7 +96,7 @@ impl ResponseHandler for UpdateHandler {
 
         for rr in &message.authority {
             if rr.class == zone.qclass {
-                let _ = insert_into_database(&rr, connection)?;
+                insert_into_database(rr, connection)?;
             } else if rr.class == Class::Class(RRClass::ANY) {
                 if rr._type == Type::Type(RRType::ANY) {
                     if rr.name == zone.qname {

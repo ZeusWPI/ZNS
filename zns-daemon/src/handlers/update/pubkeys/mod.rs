@@ -19,7 +19,7 @@ pub trait PublicKey {
         let algo_type = from_utf8(&read).map_err(|e| ZNSError::Key {
             message: format!(
                 "Could not convert type name bytes to string: {}",
-                e.to_string()
+                e
             ),
         })?;
 
