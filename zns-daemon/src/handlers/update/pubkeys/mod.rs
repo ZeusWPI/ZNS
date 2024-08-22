@@ -17,10 +17,7 @@ pub trait PublicKey {
         let type_size = reader.read_i32()?;
         let read = reader.read(type_size as usize)?;
         let algo_type = from_utf8(&read).map_err(|e| ZNSError::Key {
-            message: format!(
-                "Could not convert type name bytes to string: {}",
-                e
-            ),
+            message: format!("Could not convert type name bytes to string: {}", e),
         })?;
 
         if algo_type == key_type {
