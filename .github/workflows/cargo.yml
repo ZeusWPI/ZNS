@@ -1,0 +1,78 @@
+---
+name: Rust Cargo validator
+
+on: 
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  DATABASE_URL: postgresql://zns:zns@localhost/zns
+  ZAUTH_URL: https://zauth.zeus.gent
+  ZONE: users.zeus.gent
+
+jobs:
+  test:
+
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_DB: "zns"
+          POSTGRES_USER: "zns"
+          POSTGRES_PASSWORD: "zns"
+        ports:
+          - 5432:5432
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install latest rust toolchain
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - name: Install system dependencies
+      run: sudo apt install libpq5
+    - name: Cache compiled dependencies
+      uses: actions/cache@v3
+      with:
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+    - name: Install diesel cli
+      run: cargo install diesel_cli --no-default-features --features postgres
+    - name: Run migrations
+      working-directory: ./zns-daemon
+      run: /home/runner/.cargo/bin/diesel migration run
+    - name: Run tests
+      run: RUST_BACKTRACE=1 cargo test --verbose
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install latest rust toolchain
+      uses: actions-rs/toolchain@v1.0.6
+      with:
+        toolchain: stable
+        components: rustfmt
+        override: true
+
+    - name: Check formatting
+      run: cargo fmt -- --check
+
+  clipy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install latest rust toolchain
+      uses: actions-rs/toolchain@v1.0.6
+      with:
+        toolchain: stable
+        components: clippy
+        override: true
+    - name: Clippy check
+      run: cargo clippy --locked --all-targets --all-features
