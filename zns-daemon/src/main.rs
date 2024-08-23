@@ -4,7 +4,6 @@ mod config;
 mod db;
 mod handlers;
 mod resolver;
-mod utils;
 
 use config::Config;
 

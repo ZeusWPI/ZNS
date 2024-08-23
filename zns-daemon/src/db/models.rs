@@ -177,7 +177,7 @@ mod tests {
     fn test() {
         let mut connection = get_test_connection();
 
-        let rr = get_rr();
+        let rr = get_rr(None);
 
         let f = |connection: &mut PgConnection| {
             get_from_database(

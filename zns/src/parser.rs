@@ -328,7 +328,7 @@ pub mod tests {
 
     #[test]
     fn test_parse_rr() {
-        let rr = get_rr();
+        let rr = get_rr(None);
 
         let bytes = RR::to_bytes(rr.clone());
         let parsed = RR::from_bytes(&mut Reader::new(&bytes));
@@ -392,7 +392,7 @@ pub mod tests {
 
     #[test]
     fn test_parse_message() {
-        let message = get_message();
+        let message = get_message(None);
         let bytes = Message::to_bytes(message.clone());
         let parsed = Message::from_bytes(&mut Reader::new(&bytes));
         assert!(parsed.is_ok());

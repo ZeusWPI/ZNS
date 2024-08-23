@@ -5,7 +5,7 @@ use zns::{
     structs::{Message, Question, RR},
 };
 
-use crate::db::models::get_from_database;
+use crate::{config::Config, db::models::get_from_database};
 
 use super::ResponseHandler;
 
@@ -19,6 +19,8 @@ impl ResponseHandler for QueryHandler {
         connection: &mut PgConnection,
     ) -> Result<Message, ZNSError> {
         let mut response = message.clone();
+
+        message.check_authoritative(&Config::get().authoritative_zone)?;
 
         for question in &message.question {
             let answers = get_from_database(
@@ -90,8 +92,8 @@ mod tests {
     #[tokio::test]
     async fn test_handle_query() {
         let mut connection = get_test_connection();
-        let rr = get_rr();
-        let mut message = get_message();
+        let rr = get_rr(Some(Config::get().authoritative_zone.clone()));
+        let mut message = get_message(Some(Config::get().authoritative_zone.clone()));
         message.header.ancount = 0;
         message.answer = vec![];
 

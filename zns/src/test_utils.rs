@@ -2,9 +2,9 @@
 use crate::structs::*;
 
 #[cfg(feature = "test-utils")]
-pub fn get_rr() -> RR {
+pub fn get_rr(name: Option<LabelString>) -> RR {
     RR {
-        name: vec![String::from("example"), String::from("org")],
+        name: name.unwrap_or(vec![String::from("example"), String::from("org")]),
         _type: Type::Type(RRType::A),
         class: Class::Class(RRClass::IN),
         ttl: 10,
@@ -13,7 +13,7 @@ pub fn get_rr() -> RR {
     }
 }
 
-pub fn get_message() -> Message {
+pub fn get_message(name: Option<LabelString>) -> Message {
     Message {
         header: Header {
             id: 1,
@@ -25,18 +25,22 @@ pub fn get_message() -> Message {
         },
         question: vec![
             Question {
-                qname: vec![String::from("example"), String::from("org")],
+                qname: name
+                    .clone()
+                    .unwrap_or(vec![String::from("example"), String::from("org")]),
                 qtype: Type::Type(RRType::A),
                 qclass: Class::Class(RRClass::IN),
             },
             Question {
-                qname: vec![String::from("example"), String::from("org")],
+                qname: name
+                    .clone()
+                    .unwrap_or(vec![String::from("example"), String::from("org")]),
                 qtype: Type::Type(RRType::A),
                 qclass: Class::Class(RRClass::IN),
             },
         ],
-        answer: vec![get_rr()],
-        authority: vec![get_rr()],
-        additional: vec![get_rr()],
+        answer: vec![get_rr(name.clone())],
+        authority: vec![get_rr(name.clone())],
+        additional: vec![get_rr(name)],
     }
 }

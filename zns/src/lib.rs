@@ -5,3 +5,4 @@ pub mod reader;
 pub mod structs;
 
 pub mod test_utils;
+pub mod utils;

@@ -104,6 +104,8 @@ pub async fn tcp_listener_loop(addr: SocketAddr) -> Result<(), Box<dyn Error>> {
 mod tests {
     use zns::structs::{Class, Question, RRClass, RRType, Type};
 
+    use crate::config::Config;
+
     use super::*;
 
     #[tokio::test]
@@ -118,7 +120,7 @@ mod tests {
                 arcount: 0,
             },
             question: vec![Question {
-                qname: vec![String::from("example"), String::from("org")],
+                qname: Config::get().authoritative_zone.clone(),
                 qtype: Type::Type(RRType::A),
                 qclass: Class::Class(RRClass::IN),
             }],

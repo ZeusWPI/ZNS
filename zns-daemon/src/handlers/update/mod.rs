@@ -3,11 +3,10 @@ use diesel::PgConnection;
 use crate::{
     config::Config,
     db::models::{delete_from_database, insert_into_database},
-    utils::vec_equal,
 };
 
-use zns::errors::ZNSError;
 use zns::structs::{Class, Message, RRClass, RRType, Type};
+use zns::{errors::ZNSError, utils::vec_equal};
 
 use self::sig::Sig;
 
@@ -37,17 +36,12 @@ impl ResponseHandler for UpdateHandler {
         }
 
         // Check Zone authority
-        let zone = &message.question[0];
-        let zlen = zone.qname.len();
-        let auth_zone = &Config::get().authoritative_zone;
-        if !(zlen >= auth_zone.len() && vec_equal(&zone.qname[zlen - auth_zone.len()..], auth_zone))
-        {
-            return Err(ZNSError::Formerr {
-                message: "Invalid zone".to_string(),
-            });
-        }
+        message.check_authoritative(&Config::get().authoritative_zone)?;
 
         // Check Prerequisite    TODO: implement this
+
+        let zone = &message.question[0];
+        let zlen = zone.qname.len();
 
         //TODO: this code is ugly
         let last = message.additional.last();
