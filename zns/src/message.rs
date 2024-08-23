@@ -20,18 +20,16 @@ impl Message {
     }
 
     pub fn check_authoritative(&self, auth_zone: &LabelString) -> Result<(), ZNSError> {
-        let authoritative = self.question.iter().all(|question| {
+        for question in &self.question {
             let zlen = question.qname.len();
-            zlen >= auth_zone.len()
-                && vec_equal(&question.qname[zlen - auth_zone.len()..], auth_zone)
-        });
-
-        if !authoritative {
-            return Err(ZNSError::Refused {
-                message: "Not authoritative".to_string(),
-            });
+            if !(zlen >= auth_zone.len()
+                && vec_equal(&question.qname[zlen - auth_zone.len()..], auth_zone))
+            {
+                return Err(ZNSError::Refused {
+                    message: format!("Not authoritative for: {}", question.qname.join(".")),
+                });
+            }
         }
-
         Ok(())
     }
 }
