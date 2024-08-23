@@ -7,21 +7,20 @@ use zns::{
     errors::ZNSError,
     parser::FromBytes,
     reader::Reader,
-    structs::{Class, RRClass, RRType, Type},
+    structs::{Class, LabelString, RRClass, RRType, Type},
 };
 
 use super::{dnskey::DNSKeyRData, sig::Sig};
 
 pub async fn authenticate(
     sig: &Sig,
-    zone: &[String],
+    zone: &LabelString,
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
-    if zone.len() >= Config::get().authoritative_zone.len() {
-        //TODO: panic? subtract
+    if zone.len() > Config::get().authoritative_zone.len() {
         let username = &zone[zone.len() - Config::get().authoritative_zone.len() - 1];
 
-        let ssh_verified = validate_ssh(username, sig)
+        let ssh_verified = validate_ssh(&username.to_lowercase(), sig)
             .await
             .map_err(|e| ZNSError::Servfail {
                 message: e.to_string(),

@@ -1,7 +1,7 @@
 use crate::{
     errors::ZNSError,
     structs::{LabelString, Message, Opcode, RCODE},
-    utils::vec_equal,
+    utils::labels_equal,
 };
 
 impl Message {
@@ -23,7 +23,7 @@ impl Message {
         for question in &self.question {
             let zlen = question.qname.len();
             if !(zlen >= auth_zone.len()
-                && vec_equal(&question.qname[zlen - auth_zone.len()..], auth_zone))
+                && labels_equal(&question.qname[zlen - auth_zone.len()..].into(), auth_zone))
             {
                 return Err(ZNSError::Refused {
                     message: format!("Not authoritative for: {}", question.qname.join(".")),
@@ -68,17 +68,21 @@ mod tests {
     }
 
     #[test]
-    fn test_not_authoritative() {
-        let message = get_message(Some(vec![
+    fn test_authoritative() {
+        let name = vec![
             String::from("not"),
             String::from("good"),
             String::from("zone"),
-        ]));
+        ];
 
-        let zone = vec![String::from("good")];
+        let message = get_message(Some(name));
 
         assert!(message
-            .check_authoritative(&zone)
+            .check_authoritative(&vec![String::from("good")])
             .is_err_and(|x| x.rcode() == RCODE::REFUSED));
+
+        assert!(message
+            .check_authoritative(&vec![String::from("Zone")])
+            .is_ok())
     }
 }

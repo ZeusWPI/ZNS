@@ -6,7 +6,7 @@ use crate::{
 };
 
 use zns::structs::{Class, Message, RRClass, RRType, Type};
-use zns::{errors::ZNSError, utils::vec_equal};
+use zns::{errors::ZNSError, utils::labels_equal};
 
 use self::sig::Sig;
 
@@ -64,7 +64,7 @@ impl ResponseHandler for UpdateHandler {
             let rlen = rr.name.len();
 
             // Check if rr has same zone
-            if rlen < zlen || !(vec_equal(&zone.qname, &rr.name[rlen - zlen..])) {
+            if rlen < zlen || !(labels_equal(&zone.qname, &rr.name[rlen - zlen..].into())) {
                 return Err(ZNSError::Refused {
                     message: "RR has different zone from Question".to_string(),
                 });
