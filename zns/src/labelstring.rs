@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-
 #[derive(Debug, Clone)]
 pub struct LabelString(Vec<String>);
 
