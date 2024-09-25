@@ -1,13 +1,14 @@
 use std::{env, net::IpAddr, sync::OnceLock};
 
 use dotenvy::dotenv;
+use zns::labelstring::LabelString;
 
 static CONFIG: OnceLock<Config> = OnceLock::new();
 
 pub struct Config {
     pub zauth_url: String,
     pub db_uri: String,
-    pub authoritative_zone: Vec<String>,
+    pub authoritative_zone: LabelString,
     pub port: u16,
     pub address: IpAddr,
 }
@@ -25,11 +26,7 @@ impl Config {
             Config {
                 db_uri: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
                 zauth_url: env::var("ZAUTH_URL").expect("ZAUTH_URL must be set"),
-                authoritative_zone: env::var("ZONE")
-                    .expect("ZONE must be set")
-                    .split('.')
-                    .map(str::to_string)
-                    .collect(),
+                authoritative_zone: LabelString::from(&env::var("ZONE").expect("ZONE must be set")),
                 port: env::var("ZNS_PORT")
                     .map(|v| v.parse::<u16>().expect("ZNS_PORT is invalid"))
                     .unwrap_or(5333),

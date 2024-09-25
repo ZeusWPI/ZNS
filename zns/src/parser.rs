@@ -2,8 +2,9 @@ use std::mem::size_of;
 
 use crate::{
     errors::ZNSError,
+    labelstring::LabelString,
     reader::Reader,
-    structs::{Class, Header, LabelString, Message, Opcode, Question, RRClass, RRType, Type, RR},
+    structs::{Class, Header, Message, Opcode, Question, RRClass, RRType, SoaRData, Type, RR},
 };
 
 type Result<T> = std::result::Result<T, ZNSError>;
@@ -143,17 +144,17 @@ impl FromBytes for LabelString {
         if code & 0b11000000 != 0 {
             let offset = (((code & 0b00111111) as u16) << 8) | reader.read_u8()? as u16;
             let mut reader_past = reader.seek(offset as usize)?;
-            out.extend(LabelString::from_bytes(&mut reader_past)?);
+            out.extend(LabelString::from_bytes(&mut reader_past)?.to_vec());
         }
 
-        Ok(out)
+        Ok(out.into())
     }
 }
 
 impl ToBytes for LabelString {
     fn to_bytes(name: Self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![];
-        for label in name {
+        for label in name.as_slice() {
             result.push(label.len() as u8);
             result.extend(label.as_bytes());
         }
@@ -289,6 +290,19 @@ impl ToBytes for Message {
     }
 }
 
+impl ToBytes for SoaRData {
+    fn to_bytes(rdata: Self) -> Vec<u8> {
+        let mut result = LabelString::to_bytes(rdata.mname);
+        result.extend(LabelString::to_bytes(rdata.rname));
+        result.extend(u32::to_be_bytes(rdata.serial));
+        result.extend(i32::to_be_bytes(rdata.refresh));
+        result.extend(i32::to_be_bytes(rdata.retry));
+        result.extend(i32::to_be_bytes(rdata.expire));
+        result.extend(u32::to_be_bytes(rdata.minimum));
+        result
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::test_utils::{get_message, get_rr};
@@ -315,7 +329,7 @@ pub mod tests {
     #[test]
     fn test_parse_question() {
         let question = Question {
-            qname: vec![String::from("example"), String::from("org")],
+            qname: LabelString::from("example.org"),
             qtype: Type::Type(RRType::A),
             qclass: Class::Class(RRClass::IN),
         };
@@ -338,7 +352,7 @@ pub mod tests {
 
     #[test]
     fn test_labelstring() {
-        let labelstring = vec![String::from("example"), String::from("org")];
+        let labelstring: LabelString = vec![String::from("example"), String::from("org")].into();
 
         let bytes = LabelString::to_bytes(labelstring.clone());
         let parsed = LabelString::from_bytes(&mut Reader::new(&bytes));
@@ -348,7 +362,7 @@ pub mod tests {
 
     #[test]
     fn test_labelstring_ptr() {
-        let labelstring = vec![String::from("example"), String::from("org")];
+        let labelstring: LabelString = vec![String::from("example"), String::from("org")].into();
 
         let mut bytes = LabelString::to_bytes(labelstring.clone());
 
@@ -370,7 +384,7 @@ pub mod tests {
 
     #[test]
     fn test_labelstring_invalid_ptr() {
-        let labelstring = vec![String::from("example"), String::from("org")];
+        let labelstring: LabelString = vec![String::from("example"), String::from("org")].into();
 
         let mut bytes = LabelString::to_bytes(labelstring.clone());
 

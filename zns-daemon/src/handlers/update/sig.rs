@@ -4,10 +4,7 @@ use base64::prelude::*;
 use int_enum::IntEnum;
 
 use zns::{
-    errors::ZNSError,
-    parser::FromBytes,
-    reader::Reader,
-    structs::{LabelString, RR},
+    errors::ZNSError, labelstring::LabelString, parser::FromBytes, reader::Reader, structs::RR,
 };
 
 use super::{

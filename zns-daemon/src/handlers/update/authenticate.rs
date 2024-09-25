@@ -5,9 +5,10 @@ use crate::{config::Config, db::models::get_from_database};
 
 use zns::{
     errors::ZNSError,
+    labelstring::LabelString,
     parser::FromBytes,
     reader::Reader,
-    structs::{Class, LabelString, RRClass, RRType, Type},
+    structs::{Class, RRClass, RRType, Type},
 };
 
 use super::{dnskey::DNSKeyRData, sig::Sig};
@@ -17,8 +18,9 @@ pub async fn authenticate(
     zone: &LabelString,
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
-    if zone.len() > Config::get().authoritative_zone.len() {
-        let username = &zone[zone.len() - Config::get().authoritative_zone.len() - 1];
+    if zone.as_slice().len() > Config::get().authoritative_zone.as_slice().len() {
+        let username = &zone.as_slice()
+            [zone.as_slice().len() - Config::get().authoritative_zone.as_slice().len() - 1];
 
         let ssh_verified = validate_ssh(&username.to_lowercase(), sig)
             .await
@@ -62,7 +64,7 @@ async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Err
 }
 
 async fn validate_dnskey(
-    zone: &[String],
+    zone: &LabelString,
     sig: &Sig,
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {

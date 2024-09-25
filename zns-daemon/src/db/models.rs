@@ -2,6 +2,7 @@ use diesel::prelude::*;
 use diesel::sql_types::Text;
 use zns::{
     errors::ZNSError,
+    labelstring::LabelString,
     structs::{Class, Type, RR},
 };
 
@@ -103,7 +104,7 @@ pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<()
     }
 
     let record = Record {
-        name: rr.name.join("."),
+        name: rr.name.to_string(),
         _type: rr._type.clone().into(),
         class: rr.class.clone().into(),
         ttl: rr.ttl,
@@ -119,14 +120,14 @@ pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<()
 }
 
 pub fn get_from_database(
-    name: &[String],
+    name: &LabelString,
     _type: Option<Type>,
     class: Class,
     connection: &mut PgConnection,
 ) -> Result<Vec<RR>, ZNSError> {
     let records = Record::get(
         connection,
-        name.join("."),
+        name.to_string(),
         _type.map(|t| t.into()),
         class.into(),
     )
@@ -137,7 +138,7 @@ pub fn get_from_database(
     Ok(records
         .into_iter()
         .map(|record| RR {
-            name: record.name.split('.').map(str::to_string).collect(),
+            name: LabelString::from(&record.name),
             _type: Type::from(record._type as u16),
             class: Class::from(record.class as u16),
             ttl: record.ttl,
@@ -149,7 +150,7 @@ pub fn get_from_database(
 
 //TODO: cleanup models
 pub fn delete_from_database(
-    name: &[String],
+    name: &LabelString,
     _type: Option<Type>,
     class: Class,
     rdata: Option<Vec<u8>>,
@@ -157,7 +158,7 @@ pub fn delete_from_database(
 ) {
     let _ = Record::delete(
         connection,
-        name.join("."),
+        name.to_string(),
         _type.map(|f| f.into()),
         class.into(),
         rdata,

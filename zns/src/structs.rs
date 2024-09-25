@@ -1,5 +1,7 @@
 use int_enum::IntEnum;
 
+use crate::labelstring::LabelString;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Type {
     Type(RRType),
@@ -89,4 +91,12 @@ pub struct RR {
     pub rdata: Vec<u8>,
 }
 
-pub type LabelString = Vec<String>;
+pub struct SoaRData {
+    pub mname: LabelString,
+    pub rname: LabelString,
+    pub serial: u32,
+    pub refresh: i32,
+    pub retry: i32,
+    pub expire: i32,
+    pub minimum: u32,
+}

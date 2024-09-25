@@ -5,8 +5,8 @@ use crate::{
     db::models::{delete_from_database, insert_into_database},
 };
 
+use zns::errors::ZNSError;
 use zns::structs::{Class, Message, RRClass, RRType, Type};
-use zns::{errors::ZNSError, utils::labels_equal};
 
 use self::sig::Sig;
 
@@ -41,7 +41,7 @@ impl ResponseHandler for UpdateHandler {
         // Check Prerequisite    TODO: implement this
 
         let zone = &message.question[0];
-        let zlen = zone.qname.len();
+        let zlen = zone.qname.as_slice().len();
 
         //TODO: this code is ugly
         let last = message.additional.last();
@@ -61,10 +61,10 @@ impl ResponseHandler for UpdateHandler {
 
         // Update Section Prescan
         for rr in &message.authority {
-            let rlen = rr.name.len();
+            let rlen = rr.name.as_slice().len();
 
             // Check if rr has same zone
-            if rlen < zlen || !(labels_equal(&zone.qname, &rr.name[rlen - zlen..].into())) {
+            if rlen < zlen || !(&zone.qname == &rr.name.as_slice()[rlen - zlen..].into()) {
                 return Err(ZNSError::Refused {
                     message: "RR has different zone from Question".to_string(),
                 });

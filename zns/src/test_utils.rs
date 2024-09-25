@@ -2,9 +2,10 @@
 use crate::structs::*;
 
 #[cfg(feature = "test-utils")]
+use crate::labelstring::LabelString;
 pub fn get_rr(name: Option<LabelString>) -> RR {
     RR {
-        name: name.unwrap_or(vec![String::from("example"), String::from("org")]),
+        name: name.unwrap_or(LabelString::from("example.org")),
         _type: Type::Type(RRType::A),
         class: Class::Class(RRClass::IN),
         ttl: 10,
@@ -25,16 +26,12 @@ pub fn get_message(name: Option<LabelString>) -> Message {
         },
         question: vec![
             Question {
-                qname: name
-                    .clone()
-                    .unwrap_or(vec![String::from("example"), String::from("org")]),
+                qname: name.clone().unwrap_or(LabelString::from("example.org")),
                 qtype: Type::Type(RRType::A),
                 qclass: Class::Class(RRClass::IN),
             },
             Question {
-                qname: name
-                    .clone()
-                    .unwrap_or(vec![String::from("example"), String::from("org")]),
+                qname: name.clone().unwrap_or(LabelString::from("example.org")),
                 qtype: Type::Type(RRType::A),
                 qclass: Class::Class(RRClass::IN),
             },
