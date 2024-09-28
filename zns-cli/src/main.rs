@@ -103,7 +103,7 @@ impl KeyTransformer for Ed25519KeyPair {
         let private_encoded = format!("{version}\n{algorithm}\n{private_key}");
 
         let public_key = BASE64_STANDARD.encode(self.public_payload);
-        let public_encoded = format!("{username}.users.zeus.gent. IN KEY 256 3 15 {public_key}");
+        let public_encoded = format!("{username}.user.zeus.gent. IN KEY 256 3 15 {public_key}");
 
         (private_encoded, public_encoded)
     }
@@ -178,7 +178,7 @@ Coefficient: {coeff}
 
         let encoded_pub = BASE64_STANDARD.encode(&public_key);
 
-        let public_encoded = format!("{username}.users.zeus.gent. IN KEY 256 3 10 {encoded_pub}");
+        let public_encoded = format!("{username}.user.zeus.gent. IN KEY 256 3 10 {encoded_pub}");
 
         (private_encoded, public_encoded)
     }

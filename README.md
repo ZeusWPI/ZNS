@@ -2,7 +2,7 @@
 
 Is implementation of an authoritative DNS server.
 
-It gives all users who have a [Zauth](https://zauth.zeus.gent) account an own domain: `username.users.zeus.gent`.
+It gives all users who have a [Zauth](https://zauth.zeus.gent) account an own domain: `username.user.zeus.gent`.
 
 ## General Information
 
@@ -21,7 +21,7 @@ ZNS has 2 methods of validating the signature:
 
 ## User Guide
 
-How to add an `A` record to `<your zauth username>.users.zeus.gent`.
+How to add an `A` record to `<your zauth username>.user.zeus.gent`.
 
 ### Step 1
 
@@ -33,7 +33,7 @@ Add the public key to your Zauth account.
 The (most) painless way for sending DNS update queries is using the `nsupdate` program.
 With `nsupdate -k keys`, you can pass it your keys. But `nsupdate` expects your keys to have a certain format, so it won't accept the OPENSSH private key format.
 That's why there is a CLI (`zns-cli`) available that converts the OPENSSH private key format and creates `.key` and `.private` files corresponding with your public and private keys.
-And with some more info like the update ZONE (`username.users.zeus.gent`), the signing algorithm (ED25519 or RSA), ...
+And with some more info like the update ZONE (`username.user.zeus.gent`), the signing algorithm (ED25519 or RSA), ...
 
 Execute:
 
@@ -44,13 +44,12 @@ zns-cli --key <path to private ssh key> --username <zauth username>
 Now you can run `nsupdate -k Kdns.private`.
 
 ```
-> server flanagan.zeus.gent
-> zone username.users.zeus.gent
-> update add username.users.zeus.gent 300 A <ip address>
+> zone username.user.zeus.gent
+> update add username.user.zeus.gent 300 A <ip address>
 > send
 ```
 
-This will add an A record to `username.users.zeus.gent`. 
+This will add an A record to `username.user.zeus.gent`. 
 The message will be signed with the private key, and the server will try to validate by trying to find a valid public SSH key from your Zauth account. Matching the `username` given in the zone.
 The default expiration time with `nsupdate` is 5 minutes.
 
@@ -74,7 +73,7 @@ The following environment variables should be set (or stored in a `.env` file):
 ```
 DATABASE_URL=postgres://zns@localhost/zns
 ZAUTH_URL="https://zauth.zeus.gent"
-ZONE="users.zeus.gent"
+ZONE="user.zeus.gent"
 ```
 
 Optional: `ZNS_ADDRESS` and `ZNS_PORT`.

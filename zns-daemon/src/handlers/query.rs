@@ -101,7 +101,7 @@ fn get_soa(name: &LabelString) -> Result<RR, ZNSError> {
     } else if name.len() > auth_zone.len() {
         let zone: LabelString = name.as_slice()[name.len() - auth_zone.len() - 1..].into();
         Ok(SoaRData {
-            mname: zone.clone(),
+            mname: auth_zone,
             rname: LabelString::from(&format!("{}.zeus.ugent.be", zone.as_slice()[0])),
             serial: 1,
             refresh: 86400,
