@@ -18,15 +18,20 @@ pub async fn authenticate(
     zone: &LabelString,
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
-    if zone.as_slice().len() > Config::get().authoritative_zone.as_slice().len() {
-        let username = &zone.as_slice()
-            [zone.as_slice().len() - Config::get().authoritative_zone.as_slice().len() - 1];
+    if zone.len() > Config::get().authoritative_zone.len() {
+        let ssh_verified = match &Config::get().zauth_url {
+            Some(url) => {
+                let username = &zone.as_slice()
+                    [zone.as_slice().len() - Config::get().authoritative_zone.as_slice().len() - 1];
 
-        let ssh_verified = validate_ssh(&username.to_lowercase(), sig)
-            .await
-            .map_err(|e| ZNSError::Servfail {
-                message: e.to_string(),
-            })?;
+                validate_ssh(&username.to_lowercase(), url, sig)
+                    .await
+                    .map_err(|e| ZNSError::Servfail {
+                        message: e.to_string(),
+                    })?
+            }
+            None => false,
+        };
 
         if ssh_verified {
             Ok(true)
@@ -40,14 +45,14 @@ pub async fn authenticate(
     }
 }
 
-async fn validate_ssh(username: &String, sig: &Sig) -> Result<bool, reqwest::Error> {
+async fn validate_ssh(
+    username: &String,
+    zauth_url: &String,
+    sig: &Sig,
+) -> Result<bool, reqwest::Error> {
     let client = reqwest::Client::new();
     Ok(client
-        .get(format!(
-            "{}/users/{}/keys",
-            Config::get().zauth_url,
-            username
-        ))
+        .get(format!("{}/users/{}/keys", zauth_url, username))
         .header(ACCEPT, "application/json")
         .send()
         .await?

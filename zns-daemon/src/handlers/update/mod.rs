@@ -64,7 +64,7 @@ impl ResponseHandler for UpdateHandler {
             let rlen = rr.name.as_slice().len();
 
             // Check if rr has same zone
-            if rlen < zlen || !(&zone.qname == &rr.name.as_slice()[rlen - zlen..].into()) {
+            if rlen < zlen || !(zone.qname == rr.name.as_slice()[rlen - zlen..].into()) {
                 return Err(ZNSError::Refused {
                     message: "RR has different zone from Question".to_string(),
                 });

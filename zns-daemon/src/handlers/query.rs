@@ -37,7 +37,9 @@ impl ResponseHandler for QueryHandler {
                     if rrs.is_empty() {
                         rrs.extend(try_wildcard(question, connection)?);
                         if rrs.is_empty() {
-                            if question.qtype == Type::Type(RRType::SOA) {
+                            if question.qtype == Type::Type(RRType::SOA)
+                                && Config::get().default_soa
+                            {
                                 rrs.extend([get_soa(&question.qname)?])
                             } else {
                                 return Err(ZNSError::NXDomain {
@@ -87,7 +89,7 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
 
 fn get_soa(name: &LabelString) -> Result<RR, ZNSError> {
     let auth_zone = Config::get().authoritative_zone.clone();
-    let rdata = if &Config::get().authoritative_zone == name {
+    let rdata = if &auth_zone == name {
         // Recommended values taken from wikipedia: https://en.wikipedia.org/wiki/SOA_record
         Ok(SoaRData {
             mname: auth_zone,
