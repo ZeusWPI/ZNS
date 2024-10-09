@@ -3,6 +3,7 @@ use int_enum::IntEnum;
 use crate::labelstring::LabelString;
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Type {
     Type(RRType),
     Other(u16),
@@ -10,6 +11,7 @@ pub enum Type {
 
 #[repr(u16)]
 #[derive(Debug, Clone, PartialEq, IntEnum)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum RRType {
     A = 1,
     SOA = 6,
@@ -20,6 +22,7 @@ pub enum RRType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum Class {
     Class(RRClass),
     Other(u16),
@@ -27,6 +30,7 @@ pub enum Class {
 
 #[repr(u16)]
 #[derive(Debug, Clone, PartialEq, IntEnum)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum RRClass {
     IN = 1,
     NONE = 254,
@@ -56,6 +60,7 @@ pub enum Opcode {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Question {
     pub qname: LabelString,
     pub qtype: Type,   // NOTE: should be QTYPE, right now not really needed
@@ -63,6 +68,7 @@ pub struct Question {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Header {
     pub id: u16,
     pub flags: u16, // |QR|   Opcode  |AA|TC|RD|RA|   Z    |   RCODE   | ; 1 | 4 | 1 | 1 | 1 | 1 | 3 | 4
@@ -73,6 +79,7 @@ pub struct Header {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Message {
     pub header: Header,
     pub question: Vec<Question>,
@@ -82,6 +89,7 @@ pub struct Message {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct RR {
     pub name: LabelString,
     pub _type: Type,

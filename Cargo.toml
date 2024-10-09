@@ -5,4 +5,5 @@ members = [
     "zns",
     "zns-cli",
     "zns-daemon",
+    "fuzz"
 ]

@@ -11,6 +11,7 @@ test-utils = []
 base64 = "0.22.0"
 int-enum = "1.1"
 thiserror = "1.0"
+arbitrary = { version = "^1.3.2", optional = true, features = ["derive"] }
 
 [dev-dependencies]
 zns = { path = ".", features = ["test-utils"] }

@@ -66,12 +66,12 @@ impl<'a> Reader<'a> {
     }
 
     pub fn seek(&self, position: usize) -> Result<Self> {
-        if position >= self.position - 2 {
+        if self.position < 2 || position >= self.position - 2 {
             Err(ZNSError::Reader {
                 message: String::from("Seeking into the future is not allowed!!"),
             })
         } else {
-            let mut reader = Reader::new(&self.buffer[..self.position]);
+            let mut reader = Reader::new(&self.buffer[..self.position - 1]);
             reader.position = position;
             Ok(reader)
         }
@@ -126,7 +126,7 @@ mod tests {
 
         let new_reader = reader.seek(1);
         assert!(new_reader.is_ok());
-        assert_eq!(new_reader.unwrap().unread_bytes(), 10);
+        assert_eq!(new_reader.unwrap().unread_bytes(), 9);
 
         let new_reader = reader.seek(100);
         assert!(new_reader.is_err());

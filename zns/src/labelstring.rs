@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct LabelString(Vec<String>);
 
 pub fn labels_equal(vec1: &LabelString, vec2: &LabelString) -> bool {
