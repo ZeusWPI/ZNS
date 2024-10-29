@@ -35,18 +35,29 @@ impl ResponseHandler for QueryHandler {
             match answers {
                 Ok(mut rrs) => {
                     if rrs.is_empty() {
-                        rrs.extend(try_wildcard(question, connection)?);
-                        if rrs.is_empty() {
-                            if question.qtype == Type::Type(RRType::SOA)
-                                && Config::get().default_soa
-                            {
-                                rrs.extend([get_soa(&question.qname)?])
-                            } else {
-                                return Err(ZNSError::NXDomain {
-                                    domain: question.qname.to_string(),
-                                    qtype: question.qtype.clone(),
-                                });
-                            }
+                        let domain_records = get_from_database(
+                            &question.qname,
+                            None,
+                            question.qclass.clone(),
+                            connection,
+                        )?;
+
+                        if domain_records.is_empty() && !question.qname.is_empty() {
+                            rrs.extend(try_wildcard(question, connection)?);
+                        }
+
+                        if rrs.is_empty()
+                            && question.qtype == Type::Type(RRType::SOA)
+                            && Config::get().default_soa
+                        {
+                            rrs.extend([get_soa(&question.qname)?])
+                        }
+
+                        if rrs.is_empty() && domain_records.is_empty() {
+                            return Err(ZNSError::NXDomain {
+                                domain: question.qname.to_string(),
+                                qtype: question.qtype.clone(),
+                            });
                         }
                     }
                     response.header.ancount += rrs.len() as u16;
@@ -65,26 +76,20 @@ impl ResponseHandler for QueryHandler {
 }
 
 fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
-    let records = get_from_database(&question.qname, None, question.qclass.clone(), connection)?;
-
-    if !records.is_empty() || question.qname.as_slice().is_empty() {
-        Ok(vec![])
-    } else {
-        let qname = question.qname.clone().to_vec();
-        qname.to_vec()[0] = String::from("*");
-        Ok(get_from_database(
-            &qname.into(),
-            Some(question.qtype.clone()),
-            question.qclass.clone(),
-            connection,
-        )?
-        .into_iter()
-        .map(|mut rr| {
-            rr.name.clone_from(&question.qname);
-            rr
-        })
-        .collect())
-    }
+    let qname = question.qname.clone().to_vec();
+    qname.to_vec()[0] = String::from("*");
+    Ok(get_from_database(
+        &qname.into(),
+        Some(question.qtype.clone()),
+        question.qclass.clone(),
+        connection,
+    )?
+    .into_iter()
+    .map(|mut rr| {
+        rr.name.clone_from(&question.qname);
+        rr
+    })
+    .collect())
 }
 
 fn get_soa(name: &LabelString) -> Result<RR, ZNSError> {
