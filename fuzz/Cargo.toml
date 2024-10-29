@@ -17,3 +17,10 @@ path = "fuzz_targets/parser.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "parser_to_bytes"
+path = "fuzz_targets/parser_to_bytes.rs"
+test = false
+doc = false
+bench = false
