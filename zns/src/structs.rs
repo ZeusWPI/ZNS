@@ -14,6 +14,7 @@ pub enum Type {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum RRType {
     A = 1,
+    CNAME = 5,
     SOA = 6,
     SIG = 24,
     DNSKEY = 48,
@@ -59,6 +60,13 @@ pub enum Opcode {
     UPDATE = 5,
 }
 
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[derive(Debug, Clone, PartialEq)]
+pub enum RData {
+    LabelString(LabelString),
+    Vec(Vec<u8>),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Question {
@@ -96,7 +104,7 @@ pub struct RR {
     pub class: Class,
     pub ttl: i32,
     pub rdlength: u16,
-    pub rdata: Vec<u8>,
+    pub rdata: RData,
 }
 
 pub struct SoaRData {

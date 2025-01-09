@@ -77,7 +77,8 @@ impl Sig {
         let mut request = datagram[0..datagram.len() - 11 - rr.rdlength as usize].to_vec();
         request[11] -= 1; // Decrease arcount
 
-        let mut reader = Reader::new(&rr.rdata);
+        let data: Vec<u8> = rr.rdata.clone().into();
+        let mut reader = Reader::new(&data);
         let key_rdata = SigRData::from_bytes(&mut reader)?;
 
         let now = SystemTime::now()
@@ -99,7 +100,7 @@ impl Sig {
             });
         }
 
-        let mut raw_data = rr.rdata[0..rr.rdata.len() - key_rdata.signature.len()].to_vec();
+        let mut raw_data = data[0..data.len() - key_rdata.signature.len()].to_vec();
         raw_data.extend(request);
 
         Ok(Sig {

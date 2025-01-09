@@ -124,7 +124,7 @@ impl ResponseHandler for UpdateHandler {
                     &rr.name,
                     Some(rr._type.clone()),
                     Class::Class(RRClass::IN),
-                    Some(rr.rdata.clone()),
+                    Some(rr.rdata.clone().into()),
                     connection,
                 )
             }

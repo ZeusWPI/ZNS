@@ -81,7 +81,8 @@ async fn validate_dnskey(
     )?
     .iter()
     .any(|rr| {
-        let mut reader = Reader::new(&rr.rdata);
+        let data: Vec<u8> = rr.rdata.clone().into();
+        let mut reader = Reader::new(&data);
         DNSKeyRData::from_bytes(&mut reader).is_ok_and(|dnskey| match sig.verify_dnskey(dnskey) {
             Ok(value) => value,
             Err(e) => {

@@ -10,7 +10,12 @@ pub fn get_rr(name: Option<LabelString>) -> RR {
         class: Class::Class(RRClass::IN),
         ttl: 10,
         rdlength: 4,
-        rdata: vec![1, 2, 3, 4],
+        rdata: RData::Vec(vec![
+            (rand::random::<u8>()),
+            (rand::random::<u8>()),
+            (rand::random::<u8>()),
+            (rand::random::<u8>()),
+        ]),
     }
 }
 

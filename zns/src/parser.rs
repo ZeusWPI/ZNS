@@ -4,7 +4,9 @@ use crate::{
     errors::ZNSError,
     labelstring::LabelString,
     reader::Reader,
-    structs::{Class, Header, Message, Opcode, Question, RRClass, RRType, SoaRData, Type, RR},
+    structs::{
+        Class, Header, Message, Opcode, Question, RData, RRClass, RRType, SoaRData, Type, RR,
+    },
 };
 
 type Result<T> = std::result::Result<T, ZNSError>;
@@ -198,6 +200,47 @@ impl ToBytes for Question {
     }
 }
 
+impl From<RData> for Vec<u8> {
+    fn from(value: RData) -> Self {
+        match value {
+            RData::LabelString(labelstring) => LabelString::to_bytes(labelstring),
+            RData::Vec(vec) => vec,
+        }
+    }
+}
+
+impl RData {
+    pub fn from(reader: &mut Reader, rdlength: u16, rr_type: &Type) -> Result<Self> {
+        match rr_type {
+            Type::Type(RRType::CNAME) => Ok(Self::LabelString(LabelString::from_bytes(reader)?)),
+            _ => {
+                let data = reader.read(rdlength as usize)?;
+                Ok(Self::Vec(data.to_vec()))
+            }
+        }
+    }
+
+    pub fn from_safe(data: &[u8], rr_type: &Type) -> Result<Self> {
+        match rr_type {
+            Type::Type(RRType::CNAME) => Ok(Self::LabelString(LabelString::from_bytes(
+                &mut Reader::new(data),
+            )?)),
+            _ => Ok(Self::Vec(data.to_vec())),
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            RData::LabelString(labelstring) => labelstring.len(),
+            RData::Vec(v) => v.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 impl FromBytes for RR {
     fn from_bytes(reader: &mut Reader) -> Result<Self> {
         let name = LabelString::from_bytes(reader)?;
@@ -213,11 +256,11 @@ impl FromBytes for RR {
         } else {
             Ok(RR {
                 name,
+                rdata: RData::from(reader, rdlength, &_type)?,
                 _type,
                 class,
                 ttl,
                 rdlength,
-                rdata: reader.read(rdlength as usize)?,
             })
         }
     }
@@ -226,11 +269,12 @@ impl FromBytes for RR {
 impl ToBytes for RR {
     fn to_bytes(rr: Self) -> Vec<u8> {
         let mut result = LabelString::to_bytes(rr.name);
+        let rdata: Vec<u8> = rr.rdata.into();
         result.extend(u16::to_be_bytes(rr._type.into()));
         result.extend(u16::to_be_bytes(rr.class.into()));
         result.extend(i32::to_be_bytes(rr.ttl.to_owned()));
-        result.extend(u16::to_be_bytes(rr.rdata.len() as u16));
-        result.extend(rr.rdata);
+        result.extend(u16::to_be_bytes(rdata.len() as u16));
+        result.extend(rdata);
         result
     }
 }
