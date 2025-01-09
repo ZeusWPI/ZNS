@@ -4,7 +4,7 @@ use zns::{
     errors::ZNSError,
     labelstring::LabelString,
     parser::ToBytes,
-    structs::{Class, Message, Question, RRClass, RRType, SoaRData, Type, RR},
+    structs::{Class, Message, Question, RData, RRClass, RRType, SoaRData, Type, RR},
 };
 
 use crate::{config::Config, db::models::get_from_database};
@@ -76,8 +76,8 @@ impl ResponseHandler for QueryHandler {
 }
 
 fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
-    let qname = question.qname.clone().to_vec();
-    qname.to_vec()[0] = String::from("*");
+    let mut qname = question.qname.clone().to_vec();
+    qname[0] = String::from("*");
     Ok(get_from_database(
         &qname.into(),
         Some(question.qtype.clone()),
@@ -87,6 +87,7 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
     .into_iter()
     .map(|mut rr| {
         rr.name.clone_from(&question.qname);
+        println!("{:#?}", rr);
         rr
     })
     .collect())
@@ -129,7 +130,7 @@ fn get_soa(name: &LabelString) -> Result<RR, ZNSError> {
         class: Class::Class(RRClass::IN),
         ttl: 11200,
         rdlength: 0,
-        rdata: SoaRData::to_bytes(rdata),
+        rdata: RData::from_safe(&SoaRData::to_bytes(rdata), &Type::Type(RRType::SOA))?,
     })
 }
 
@@ -164,5 +165,36 @@ mod tests {
         assert_eq!(result.answer.len(), 2);
         assert_eq!(result.answer[0], rr);
         assert_eq!(result.answer[1], rr);
+    }
+
+    #[tokio::test]
+    async fn test_wildcard_query() {
+        let mut connection = get_test_connection();
+
+        let wildcard = Config::get().authoritative_zone.prepend("*".to_string());
+        let non_existent = Config::get()
+            .authoritative_zone
+            .prepend("nonexistent".to_string());
+
+        let mut rr = get_rr(Some(wildcard));
+
+        let mut message = get_message(Some(non_existent.clone()));
+        message.header.ancount = 0;
+        message.answer = vec![];
+
+        assert!(insert_into_database(&rr, &mut connection).is_ok());
+
+        rr.name = non_existent;
+
+        let result = QueryHandler::handle(
+            &message,
+            &Message::to_bytes(message.clone()),
+            &mut connection,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.header.ancount, 2);
+        assert_eq!(result.answer.len(), 2);
+        assert_eq!(result.answer[0], rr);
     }
 }

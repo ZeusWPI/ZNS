@@ -39,6 +39,13 @@ impl LabelString {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
+
+    #[cfg(feature = "test-utils")]
+    pub fn prepend(&self, element: String) -> Self {
+        let mut vec = self.0.clone();
+        vec.insert(0, element);
+        LabelString(vec)
+    }
 }
 
 impl PartialEq for LabelString {

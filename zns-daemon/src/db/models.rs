@@ -3,7 +3,7 @@ use diesel::sql_types::Text;
 use zns::{
     errors::ZNSError,
     labelstring::LabelString,
-    structs::{Class, Type, RR},
+    structs::{Class, RData, Type, RR},
 };
 
 use self::schema::records::{self};
@@ -109,7 +109,7 @@ pub fn insert_into_database(rr: &RR, connection: &mut PgConnection) -> Result<()
         class: rr.class.clone().into(),
         ttl: rr.ttl,
         rdlength: rr.rdlength as i32,
-        rdata: rr.rdata.clone(),
+        rdata: rr.rdata.clone().into(),
     };
 
     Record::create(connection, record).map_err(|e| ZNSError::Servfail {
@@ -137,13 +137,17 @@ pub fn get_from_database(
 
     Ok(records
         .into_iter()
-        .map(|record| RR {
-            name: LabelString::from(&record.name),
-            _type: Type::from(record._type as u16),
-            class: Class::from(record.class as u16),
-            ttl: record.ttl,
-            rdlength: record.rdlength as u16,
-            rdata: record.rdata,
+        .filter_map(|record| {
+            RData::from_safe(&record.rdata, &Type::from(record._type as u16))
+                .map(|rdata| RR {
+                    name: LabelString::from(&record.name),
+                    _type: Type::from(record._type as u16),
+                    class: Class::from(record.class as u16),
+                    ttl: record.ttl,
+                    rdlength: record.rdlength as u16,
+                    rdata,
+                })
+                .ok()
         })
         .collect())
 }
@@ -202,7 +206,7 @@ mod tests {
             &rr.name,
             Some(rr._type.clone()),
             rr.class.clone(),
-            Some(rr.rdata.clone()),
+            Some(rr.rdata.clone().into()),
             &mut connection,
         );
 
