@@ -42,6 +42,8 @@ impl ResponseHandler for QueryHandler {
                             connection,
                         )?;
 
+                        rrs.extend(try_cname(&domain_records));
+
                         if domain_records.is_empty() && !question.qname.is_empty() {
                             rrs.extend(try_wildcard(question, connection)?);
                         }
@@ -75,6 +77,14 @@ impl ResponseHandler for QueryHandler {
     }
 }
 
+fn try_cname(records: &[RR]) -> Vec<RR> {
+    records
+        .iter()
+        .filter(|rr| rr._type == Type::Type(RRType::CNAME))
+        .cloned()
+        .collect()
+}
+
 fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
     let mut qname = question.qname.clone().to_vec();
     qname[0] = String::from("*");
@@ -87,7 +97,6 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
     .into_iter()
     .map(|mut rr| {
         rr.name.clone_from(&question.qname);
-        println!("{:#?}", rr);
         rr
     })
     .collect())
@@ -141,7 +150,7 @@ mod tests {
     use crate::db::{lib::tests::get_test_connection, models::insert_into_database};
     use zns::{
         parser::ToBytes,
-        test_utils::{get_message, get_rr},
+        test_utils::{get_cname_rr, get_message, get_rr},
     };
 
     #[tokio::test]
@@ -196,5 +205,29 @@ mod tests {
         assert_eq!(result.header.ancount, 2);
         assert_eq!(result.answer.len(), 2);
         assert_eq!(result.answer[0], rr);
+    }
+
+    #[tokio::test]
+    async fn test_cname() {
+        let mut connection = get_test_connection();
+        let rr = get_cname_rr(Some(Config::get().authoritative_zone.clone()));
+
+        assert!(insert_into_database(&rr, &mut connection).is_ok());
+
+        let mut message = get_message(Some(Config::get().authoritative_zone.clone()));
+        message.header.ancount = 0;
+        message.answer = vec![];
+
+        let result = QueryHandler::handle(
+            &message,
+            &Message::to_bytes(message.clone()),
+            &mut connection,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.header.ancount, 2);
+        assert_eq!(result.answer.len(), 2);
+        assert_eq!(result.answer[0], rr);
+        assert_eq!(result.answer[1], rr);
     }
 }

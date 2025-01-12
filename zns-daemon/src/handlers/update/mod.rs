@@ -2,11 +2,11 @@ use diesel::PgConnection;
 
 use crate::{
     config::Config,
-    db::models::{delete_from_database, insert_into_database},
+    db::models::{delete_from_database, get_from_database, insert_into_database},
 };
 
-use zns::errors::ZNSError;
 use zns::structs::{Class, Message, RRClass, RRType, Type};
+use zns::{errors::ZNSError, structs::RR};
 
 use self::sig::Sig;
 
@@ -90,6 +90,9 @@ impl ResponseHandler for UpdateHandler {
 
         for rr in &message.authority {
             if rr.class == zone.qclass {
+                if let Some(message) = validate_record(rr, connection)? {
+                    return Err(ZNSError::Refused { message });
+                }
                 insert_into_database(rr, connection)?;
             } else if rr.class == Class::Class(RRClass::ANY) {
                 if rr._type == Type::Type(RRType::ANY) {
@@ -131,5 +134,21 @@ impl ResponseHandler for UpdateHandler {
         }
 
         Ok(response)
+    }
+}
+
+fn validate_record(record: &RR, connection: &mut PgConnection) -> Result<Option<String>, ZNSError> {
+    let rr_type = match record._type {
+        Type::Type(RRType::CNAME) => None,
+        _ => Some(Type::Type(RRType::CNAME)),
+    };
+
+    let records = get_from_database(&record.name, rr_type, record.class.clone(), connection)?;
+    if !records.is_empty() {
+        Ok(Some(
+            "Another record with the same name already exists".to_string(),
+        ))
+    } else {
+        Ok(None)
     }
 }

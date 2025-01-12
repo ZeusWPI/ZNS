@@ -22,6 +22,8 @@ pub enum ZNSError {
     NotAuth { message: String },
     #[error("I refuse to answer the query: {message:?}")]
     Refused { message: String },
+    #[error("Update RR is outside zone: {message:?}")]
+    UpdateZone { message: String },
 }
 
 impl ZNSError {
@@ -35,6 +37,7 @@ impl ZNSError {
             ZNSError::NXDomain { .. } => RCODE::NXDOMAIN,
             ZNSError::NotImp { .. } => RCODE::NOTIMP,
             ZNSError::Refused { .. } | ZNSError::Key { .. } => RCODE::REFUSED,
+            ZNSError::UpdateZone { .. } => RCODE::NOTZONE,
         }
     }
 }

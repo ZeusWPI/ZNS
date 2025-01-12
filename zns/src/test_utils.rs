@@ -1,7 +1,9 @@
 #![cfg(feature = "test-utils")]
+use rand::distributions::Alphanumeric;
+use rand::Rng;
+
 use crate::structs::*;
 
-#[cfg(feature = "test-utils")]
 use crate::labelstring::LabelString;
 pub fn get_rr(name: Option<LabelString>) -> RR {
     RR {
@@ -16,6 +18,17 @@ pub fn get_rr(name: Option<LabelString>) -> RR {
             (rand::random::<u8>()),
             (rand::random::<u8>()),
         ]),
+    }
+}
+
+pub fn get_cname_rr(name: Option<LabelString>) -> RR {
+    RR {
+        name: name.unwrap_or(LabelString::from("example.org")),
+        _type: Type::Type(RRType::CNAME),
+        class: Class::Class(RRClass::IN),
+        ttl: 10,
+        rdlength: 4,
+        rdata: RData::LabelString(random_domain()),
     }
 }
 
@@ -45,4 +58,18 @@ pub fn get_message(name: Option<LabelString>) -> Message {
         authority: vec![get_rr(name.clone())],
         additional: vec![get_rr(name)],
     }
+}
+
+fn random_domain() -> LabelString {
+    let part1 = random_string();
+    let part2 = random_string();
+    LabelString::from(&format!("{part1}.{part2}"))
+}
+
+fn random_string() -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(7)
+        .map(char::from)
+        .collect()
 }
