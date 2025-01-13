@@ -88,8 +88,8 @@ fn try_cname(records: &[RR]) -> Vec<RR> {
 fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Vec<RR>, ZNSError> {
     let mut qname = question.qname.clone().to_vec();
     qname[0] = String::from("*");
-    Ok(get_from_database(
-        &qname.into(),
+    let matches: Vec<RR> = get_from_database(
+        &qname.clone().into(),
         Some(question.qtype.clone()),
         question.qclass.clone(),
         connection,
@@ -99,7 +99,25 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
         rr.name.clone_from(&question.qname);
         rr
     })
-    .collect())
+    .collect();
+
+    // Maybe wildcard cname exists
+    if matches.is_empty() {
+        Ok(get_from_database(
+            &qname.into(),
+            Some(Type::Type(RRType::CNAME)),
+            question.qclass.clone(),
+            connection,
+        )?
+        .into_iter()
+        .map(|mut rr| {
+            rr.name.clone_from(&question.qname);
+            rr
+        })
+        .collect())
+    } else {
+        Ok(matches)
+    }
 }
 
 fn get_soa(name: &LabelString) -> Result<RR, ZNSError> {
@@ -229,5 +247,36 @@ mod tests {
         assert_eq!(result.answer.len(), 2);
         assert_eq!(result.answer[0], rr);
         assert_eq!(result.answer[1], rr);
+    }
+
+    #[tokio::test]
+    async fn test_cname_wildcard_query() {
+        let mut connection = get_test_connection();
+
+        let wildcard = Config::get().authoritative_zone.prepend("*".to_string());
+        let non_existent = Config::get()
+            .authoritative_zone
+            .prepend("nonexistent".to_string());
+
+        let mut rr = get_cname_rr(Some(wildcard));
+
+        let mut message = get_message(Some(non_existent.clone()));
+        message.header.ancount = 0;
+        message.answer = vec![];
+
+        assert!(insert_into_database(&rr, &mut connection).is_ok());
+
+        rr.name = non_existent;
+
+        let result = QueryHandler::handle(
+            &message,
+            &Message::to_bytes(message.clone()),
+            &mut connection,
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.header.ancount, 2);
+        assert_eq!(result.answer.len(), 2);
+        assert_eq!(result.answer[0], rr);
     }
 }
