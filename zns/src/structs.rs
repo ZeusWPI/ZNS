@@ -16,6 +16,7 @@ pub enum RRType {
     A = 1,
     CNAME = 5,
     SOA = 6,
+    AXFR = 252,
     SIG = 24,
     DNSKEY = 48,
     OPT = 41,

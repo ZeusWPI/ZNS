@@ -1,5 +1,6 @@
 use std::{error::Error, net::SocketAddr};
 
+mod auth;
 mod config;
 mod db;
 mod handlers;

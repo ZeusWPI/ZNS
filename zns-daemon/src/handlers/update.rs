@@ -1,21 +1,12 @@
 use diesel::PgConnection;
 
-use crate::{
-    config::Config,
-    db::models::{delete_from_database, get_from_database, insert_into_database},
-};
+use crate::auth::verify_authorization;
+use crate::db::models::{delete_from_database, get_from_database, insert_into_database};
 
 use zns::structs::{Class, Message, RRClass, RRType, Type};
 use zns::{errors::ZNSError, structs::RR};
 
-use self::sig::Sig;
-
 use super::ResponseHandler;
-
-mod authenticate;
-mod dnskey;
-mod pubkeys;
-mod sig;
 
 pub struct UpdateHandler {}
 
@@ -35,27 +26,14 @@ impl ResponseHandler for UpdateHandler {
             });
         }
 
-        // Check Zone authority
-        message.check_authoritative(&Config::get().authoritative_zone)?;
-
         // Check Prerequisite    TODO: implement this
 
         let zone = &message.question[0];
         let zlen = zone.qname.as_slice().len();
 
-        //TODO: this code is ugly
-        let last = message.additional.last();
-        if last.is_some() && last.unwrap()._type == Type::Type(RRType::SIG) {
-            let sig = Sig::new(last.unwrap(), raw)?;
-
-            if !authenticate::authenticate(&sig, &zone.qname, connection).await? {
-                return Err(ZNSError::Refused {
-                    message: "Unable to verify authentication".to_string(),
-                });
-            }
-        } else {
+        if !verify_authorization(message, &zone.qname, raw, connection).await? {
             return Err(ZNSError::Refused {
-                message: "No KEY record at the end of request found".to_string(),
+                message: "Not Authorized".to_string(),
             });
         }
 

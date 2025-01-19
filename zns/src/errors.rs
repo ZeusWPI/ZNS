@@ -18,7 +18,7 @@ pub enum ZNSError {
     NXDomain { domain: String, qtype: Type },
     #[error("NotImplemented Error for {object:?}: {message:?}")]
     NotImp { object: String, message: String },
-    #[error("Authentication Error: {message:?}")]
+    #[error("Server not authoritative for zone: {message:?}")]
     NotAuth { message: String },
     #[error("I refuse to answer the query: {message:?}")]
     Refused { message: String },

@@ -24,7 +24,7 @@ mod schema {
 
 #[derive(Insertable, Queryable, Selectable)]
 #[diesel(table_name = records)]
-struct Record {
+pub struct Record {
     pub name: String,
     pub _type: i32,
     pub class: i32,
@@ -38,7 +38,7 @@ define_sql_function! {
 }
 
 impl Record {
-    pub fn get(
+    fn get(
         db: &mut PgConnection,
         name: String,
         _type: Option<i32>,
@@ -59,16 +59,27 @@ impl Record {
         query.get_results(db)
     }
 
-    pub fn create(
+    // Returns all records with names ending with given suffix.
+    pub fn get_by_suffix(
         db: &mut PgConnection,
-        new_record: Record,
-    ) -> Result<usize, diesel::result::Error> {
+        suffix: &str,
+        class: i32,
+    ) -> Result<Vec<Record>, diesel::result::Error> {
+        let query = records::table.filter(
+            lower(records::name)
+                .ilike(format!("%{}", suffix.to_lowercase()))
+                .and(records::class.eq(class)),
+        );
+        query.get_results(db)
+    }
+
+    fn create(db: &mut PgConnection, new_record: Record) -> Result<usize, diesel::result::Error> {
         diesel::insert_into(records::table)
             .values(&new_record)
             .execute(db)
     }
 
-    pub fn delete(
+    fn delete(
         db: &mut PgConnection,
         name: String,
         _type: Option<i32>,
@@ -137,18 +148,7 @@ pub fn get_from_database(
 
     Ok(records
         .into_iter()
-        .filter_map(|record| {
-            RData::from_safe(&record.rdata, &Type::from(record._type as u16))
-                .map(|rdata| RR {
-                    name: LabelString::from(&record.name),
-                    _type: Type::from(record._type as u16),
-                    class: Class::from(record.class as u16),
-                    ttl: record.ttl,
-                    rdlength: record.rdlength as u16,
-                    rdata,
-                })
-                .ok()
-        })
+        .filter_map(|record| record.into())
         .collect())
 }
 
@@ -167,6 +167,21 @@ pub fn delete_from_database(
         class.into(),
         rdata,
     );
+}
+
+impl From<Record> for Option<RR> {
+    fn from(record: Record) -> Self {
+        RData::from_safe(&record.rdata, &Type::from(record._type as u16))
+            .map(|rdata| RR {
+                name: LabelString::from(&record.name),
+                _type: Type::from(record._type as u16),
+                class: Class::from(record.class as u16),
+                ttl: record.ttl,
+                rdlength: record.rdlength as u16,
+                rdata,
+            })
+            .ok()
+    }
 }
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
+use crate::auth::sig::Algorithm;
+
 use super::{PublicKey, SSH_ED25519};
-use crate::handlers::update::sig::Algorithm;
 use ring::signature;
 use zns::{errors::ZNSError, reader::Reader};
 

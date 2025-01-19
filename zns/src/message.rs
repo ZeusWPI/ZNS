@@ -1,7 +1,6 @@
 use crate::{
-    errors::ZNSError,
     labelstring::LabelString,
-    structs::{Message, Opcode, RCODE},
+    structs::{Message, Opcode, RCODE, RR},
 };
 
 impl Message {
@@ -19,7 +18,7 @@ impl Message {
         RCODE::try_from(self.header.flags & (!0 >> 12))
     }
 
-    pub fn check_authoritative(&self, auth_zone: &LabelString) -> Result<(), ZNSError> {
+    pub fn not_authoritative(&self, auth_zone: &LabelString) -> Option<String> {
         for question in &self.question {
             let zlen = question.qname.len();
             if !(zlen >= auth_zone.len()
@@ -27,12 +26,15 @@ impl Message {
                     question.qname.as_slice()[zlen - auth_zone.len()..].to_vec(),
                 ) == auth_zone)
             {
-                return Err(ZNSError::Refused {
-                    message: format!("Not authoritative for: {}", question.qname),
-                });
+                return Some(question.qname.to_string());
             }
         }
-        Ok(())
+        None
+    }
+
+    pub fn extend_answer(&mut self, rrs: Vec<RR>) {
+        self.header.qdcount += rrs.len() as u16;
+        self.answer.extend(rrs);
     }
 }
 
@@ -76,11 +78,11 @@ mod tests {
         let message = get_message(Some(name));
 
         assert!(message
-            .check_authoritative(&LabelString::from("good"))
-            .is_err_and(|x| x.rcode() == RCODE::REFUSED));
+            .not_authoritative(&LabelString::from("good"))
+            .is_some());
 
         assert!(message
-            .check_authoritative(&LabelString::from("Zone"))
-            .is_ok())
+            .not_authoritative(&LabelString::from("Zone"))
+            .is_none())
     }
 }

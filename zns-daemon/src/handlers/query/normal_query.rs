@@ -2,27 +2,23 @@ use diesel::PgConnection;
 
 use zns::{
     errors::ZNSError,
-    labelstring::LabelString,
-    parser::ToBytes,
-    structs::{Class, Message, Question, RData, RRClass, RRType, SoaRData, Type, RR},
+    structs::{Message, Question, RRType, Type, RR},
 };
 
 use crate::{config::Config, db::models::get_from_database};
 
-use super::ResponseHandler;
+use super::{get_default_soa, ResponseHandler};
 
-pub struct QueryHandler {}
+pub struct NormalQueryHandler {}
 
 //TODO: the clones in this file should and could be avoided
-impl ResponseHandler for QueryHandler {
+impl ResponseHandler for NormalQueryHandler {
     async fn handle(
         message: &Message,
         _raw: &[u8],
         connection: &mut PgConnection,
     ) -> Result<Message, ZNSError> {
         let mut response = message.clone();
-
-        message.check_authoritative(&Config::get().authoritative_zone)?;
 
         for question in &message.question {
             let answers = get_from_database(
@@ -52,7 +48,7 @@ impl ResponseHandler for QueryHandler {
                             && question.qtype == Type::Type(RRType::SOA)
                             && Config::get().default_soa
                         {
-                            rrs.extend([get_soa(&question.qname)?])
+                            rrs.extend([get_default_soa(&question.qname)?])
                         }
 
                         if rrs.is_empty() && domain_records.is_empty() {
@@ -62,8 +58,8 @@ impl ResponseHandler for QueryHandler {
                             });
                         }
                     }
-                    response.header.ancount += rrs.len() as u16;
-                    response.answer.extend(rrs)
+
+                    response.extend_answer(rrs);
                 }
                 Err(e) => {
                     return Err(ZNSError::Servfail {
@@ -120,47 +116,6 @@ fn try_wildcard(question: &Question, connection: &mut PgConnection) -> Result<Ve
     }
 }
 
-fn get_soa(name: &LabelString) -> Result<RR, ZNSError> {
-    let auth_zone = Config::get().authoritative_zone.clone();
-    let rdata = if &auth_zone == name {
-        // Recommended values taken from wikipedia: https://en.wikipedia.org/wiki/SOA_record
-        Ok(SoaRData {
-            mname: auth_zone,
-            rname: LabelString::from("admin.zeus.ugent.be"),
-            serial: 1,
-            refresh: 86400,
-            retry: 7200,
-            expire: 3600000,
-            minimum: 172800,
-        })
-    } else if name.len() > auth_zone.len() {
-        let zone: LabelString = name.as_slice()[name.len() - auth_zone.len() - 1..].into();
-        Ok(SoaRData {
-            mname: auth_zone,
-            rname: LabelString::from(&format!("{}.zeus.ugent.be", zone.as_slice()[0])),
-            serial: 1,
-            refresh: 86400,
-            retry: 7200,
-            expire: 3600000,
-            minimum: 172800,
-        })
-    } else {
-        Err(ZNSError::NXDomain {
-            domain: name.to_string(),
-            qtype: Type::Type(RRType::SOA),
-        })
-    }?;
-
-    Ok(RR {
-        name: name.to_owned(),
-        _type: Type::Type(RRType::SOA),
-        class: Class::Class(RRClass::IN),
-        ttl: 11200,
-        rdlength: 0,
-        rdata: RData::from_safe(&SoaRData::to_bytes(rdata), &Type::Type(RRType::SOA))?,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -181,7 +136,7 @@ mod tests {
 
         assert!(insert_into_database(&rr, &mut connection).is_ok());
 
-        let result = QueryHandler::handle(
+        let result = NormalQueryHandler::handle(
             &message,
             &Message::to_bytes(message.clone()),
             &mut connection,
@@ -213,7 +168,7 @@ mod tests {
 
         rr.name = non_existent;
 
-        let result = QueryHandler::handle(
+        let result = NormalQueryHandler::handle(
             &message,
             &Message::to_bytes(message.clone()),
             &mut connection,
@@ -236,7 +191,7 @@ mod tests {
         message.header.ancount = 0;
         message.answer = vec![];
 
-        let result = QueryHandler::handle(
+        let result = NormalQueryHandler::handle(
             &message,
             &Message::to_bytes(message.clone()),
             &mut connection,
@@ -268,7 +223,7 @@ mod tests {
 
         rr.name = non_existent;
 
-        let result = QueryHandler::handle(
+        let result = NormalQueryHandler::handle(
             &message,
             &Message::to_bytes(message.clone()),
             &mut connection,

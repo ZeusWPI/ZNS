@@ -5,6 +5,8 @@ use zns::{
     structs::{Message, Opcode},
 };
 
+use crate::config::Config;
+
 use self::{query::QueryHandler, update::UpdateHandler};
 
 mod query;
@@ -26,6 +28,11 @@ impl ResponseHandler for Handler {
         raw: &[u8],
         connection: &mut PgConnection,
     ) -> Result<Message, ZNSError> {
+        // Check for a question the server is not autoritative for
+        if let Some(qname) = message.not_authoritative(&Config::get().authoritative_zone) {
+            return Err(ZNSError::NotAuth { message: qname });
+        }
+
         match message.get_opcode() {
             //TODO: implement this in Opcode
             Ok(opcode) => match opcode {

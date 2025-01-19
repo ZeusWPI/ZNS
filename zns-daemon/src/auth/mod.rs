@@ -1,5 +1,7 @@
 use diesel::PgConnection;
+use dnskey::DNSKeyRData;
 use reqwest::header::ACCEPT;
+use sig::Sig;
 
 use crate::{config::Config, db::models::get_from_database};
 
@@ -8,23 +10,37 @@ use zns::{
     labelstring::LabelString,
     parser::FromBytes,
     reader::Reader,
-    structs::{Class, RRClass, RRType, Type},
+    structs::{Class, Message, RRClass, RRType, Type},
 };
 
-use super::{dnskey::DNSKeyRData, sig::Sig};
+mod dnskey;
+mod pubkeys;
+mod sig;
 
-pub async fn authenticate(
-    sig: &Sig,
+pub async fn verify_authorization(
+    message: &Message,
     zone: &LabelString,
+    raw: &[u8],
     connection: &mut PgConnection,
 ) -> Result<bool, ZNSError> {
+    let sig = message
+        .additional
+        .last()
+        .filter(|rr| rr._type == Type::Type(RRType::SIG))
+        .map_or(
+            Err(ZNSError::Refused {
+                message: "No KEY record found at the end of additional section".to_string(),
+            }),
+            |rr| Sig::new(rr, raw),
+        )?;
+
     if zone.len() > Config::get().authoritative_zone.len() {
         let ssh_verified = match &Config::get().zauth_url {
             Some(url) => {
                 let username = &zone.as_slice()
                     [zone.as_slice().len() - Config::get().authoritative_zone.as_slice().len() - 1];
 
-                validate_ssh(&username.to_lowercase(), url, sig)
+                validate_ssh(&username.to_lowercase(), url, &sig)
                     .await
                     .map_err(|e| ZNSError::Servfail {
                         message: e.to_string(),
@@ -36,7 +52,7 @@ pub async fn authenticate(
         if ssh_verified {
             Ok(true)
         } else {
-            Ok(validate_dnskey(zone, sig, connection).await?)
+            Ok(validate_dnskey(zone, &sig, connection).await?)
         }
     } else {
         Err(ZNSError::NotAuth {
