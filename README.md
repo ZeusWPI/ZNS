@@ -72,7 +72,7 @@ The DNS lookup tool `dig` has support for both `axfr` and `sig(0)`, but other cl
 Having the private and public key in your directory (generated in step 2 of the `User Guide` above), you can run the following:
 
 ```sh
-dig -t axfr -k Kns.private <zauth username>.user.zeus.gent
+dig @user.zeus.gent -t axfr -k Kdns.private <zauth username>.user.zeus.gent
 ```
 
 If dig gives a `bad algorithm` error, the version may be out of date. 
