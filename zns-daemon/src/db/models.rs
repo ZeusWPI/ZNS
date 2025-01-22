@@ -65,11 +65,13 @@ impl Record {
         suffix: &str,
         class: i32,
     ) -> Result<Vec<Record>, diesel::result::Error> {
-        let query = records::table.filter(
-            lower(records::name)
-                .ilike(format!("%{}", suffix.to_lowercase()))
-                .and(records::class.eq(class)),
-        );
+        let query = records::table
+            .filter(
+                records::name
+                    .ilike(format!("%{}", suffix))
+                    .and(records::class.eq(class)),
+            )
+            .order(records::name.desc());
         query.get_results(db)
     }
 

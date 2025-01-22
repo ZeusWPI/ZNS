@@ -14,6 +14,7 @@ pub enum Type {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum RRType {
     A = 1,
+    NS = 2,
     CNAME = 5,
     SOA = 6,
     AXFR = 252,

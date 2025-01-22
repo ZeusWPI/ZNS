@@ -48,7 +48,7 @@ fn get_default_soa(name: &LabelString) -> Result<RR, ZNSError> {
             expire: 3600000,
             minimum: 172800,
         })
-    } else if name.len() > auth_zone.len() {
+    } else if name.len() == 1 + auth_zone.len() {
         let zone: LabelString = name.as_slice()[name.len() - auth_zone.len() - 1..].into();
         Ok(SoaRData {
             mname: auth_zone,

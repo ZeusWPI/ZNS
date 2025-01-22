@@ -3,11 +3,7 @@ use zns::{
     structs::{RRType, Type, RR},
 };
 
-use crate::{
-    auth::verify_authorization,
-    db::models::{get_from_database, Record},
-    handlers::ResponseHandler,
-};
+use crate::{auth::verify_authorization, db::models::Record, handlers::ResponseHandler};
 
 use super::get_default_soa;
 
@@ -53,14 +49,7 @@ impl ResponseHandler for AXFRHandler {
             .filter(|rr: &RR| rr._type != Type::Type(RRType::SOA))
             .collect();
 
-        let soa = get_from_database(
-            zone,
-            Some(Type::Type(RRType::SOA)),
-            question.qclass.clone(),
-            connection,
-        )?
-        .first()
-        .map_or_else(|| get_default_soa(zone), |rr| Ok(rr.clone()))?;
+        let soa = get_default_soa(zone)?;
 
         response.extend_answer(vec![soa.clone()]);
         response.extend_answer(rrs);

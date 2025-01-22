@@ -8,6 +8,9 @@ use zns::{errors::ZNSError, structs::RR};
 
 use super::ResponseHandler;
 
+// Types which are not allowed to add. Array should be small.
+static ILLEGAL_TYPES: [RRType; 2] = [RRType::SOA, RRType::NS];
+
 pub struct UpdateHandler {}
 
 impl ResponseHandler for UpdateHandler {
@@ -116,12 +119,18 @@ impl ResponseHandler for UpdateHandler {
 }
 
 fn validate_record(record: &RR, connection: &mut PgConnection) -> Result<Option<String>, ZNSError> {
-    let rr_type = match record._type {
+    if let Type::Type(rr_type) = &record._type {
+        if ILLEGAL_TYPES.contains(rr_type) {
+            return Ok(Some(format!("Illegal type in add: {:#?} ", rr_type)));
+        }
+    }
+
+    let lookup_type = match record._type {
         Type::Type(RRType::CNAME) => None,
         _ => Some(Type::Type(RRType::CNAME)),
     };
 
-    let records = get_from_database(&record.name, rr_type, record.class.clone(), connection)?;
+    let records = get_from_database(&record.name, lookup_type, record.class.clone(), connection)?;
     if !records.is_empty() {
         Ok(Some(
             "Another record with the same name already exists".to_string(),

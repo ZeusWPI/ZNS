@@ -33,7 +33,7 @@ impl Message {
     }
 
     pub fn extend_answer(&mut self, rrs: Vec<RR>) {
-        self.header.qdcount += rrs.len() as u16;
+        self.header.ancount += rrs.len() as u16;
         self.answer.extend(rrs);
     }
 }
