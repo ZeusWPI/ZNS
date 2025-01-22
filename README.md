@@ -62,6 +62,21 @@ This contains a DNSKEY resource record you can add to your zone using `nsupdate`
 
 It's also possible to directly generate a DNSKEY record key pair using `dnssec-keygen`.
 
+### Listing Your Records
+
+You can get a list of your current resource records by using the AXFR mechanism: A client can request all the the resource records in a zone using DNS transactions to an authoritative name server (rfc5936).
+ZNS authorizes these requests again by using SIG(0), so only the owner of a zone can request all the resource records.
+
+The DNS lookup tool `dig` has support for both `axfr` and `sig(0)`, but other clients that support these should also work, assuming that the supplied private/public key (format) is recognized by that tool.
+
+Having the private and public key in your directory (generated in step 2 of the `User Guide` above), you can run the following:
+
+```sh
+dig -t axfr -k Kns.private <zauth username>.user.zeus.gent
+```
+
+If dig gives a `bad algorithm` error, the version may be out of date. 
+
 ## Server Setup Guide
 
 There are three crates available at the root of the repo.
