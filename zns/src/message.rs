@@ -1,12 +1,14 @@
 use crate::{
     labelstring::LabelString,
-    structs::{Message, Opcode, RCODE, RR},
+    structs::{Message, Opcode, RRType, Type, RCODE, RR},
 };
 
 impl Message {
     pub fn set_response(&mut self, rcode: RCODE) {
         self.header.flags =
-            (self.header.flags | 0b1000_0100_0000_0000 | rcode as u16) & 0b1111_1101_0111_1111
+            (self.header.flags | 0b1000_0100_0000_0000 | rcode as u16) & 0b1111_1101_0111_1111;
+
+        self.remove_signature();
     }
 
     pub fn get_opcode(&self) -> Result<Opcode, String> {
@@ -30,6 +32,17 @@ impl Message {
             }
         }
         None
+    }
+
+    pub fn remove_signature(&mut self) {
+        let record = self
+            .additional
+            .last()
+            .map(|rr| rr._type == Type::Type(RRType::SIG));
+        if record == Some(true) {
+            self.additional.pop();
+            self.header.arcount -= 1;
+        }
     }
 
     pub fn extend_answer(&mut self, rrs: Vec<RR>) {
