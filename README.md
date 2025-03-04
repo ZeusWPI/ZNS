@@ -32,7 +32,7 @@ Add the public key to your Zauth account.
 
 The (most) painless way for sending DNS update queries is using the `nsupdate` program.
 With `nsupdate -k keys`, you can pass it your keys. But `nsupdate` expects your keys to have a certain format, so it won't accept the OPENSSH private key format.
-That's why there is a CLI (`zns-cli`) available that converts the OPENSSH private key format and creates `.key` and `.private` files corresponding with your public and private keys.
+That's why there is a CLI (`zns-cli`) available (see release) that converts the OPENSSH private key format and creates `.key` and `.private` files corresponding with your public and private keys.
 And with some more info like the update ZONE (`username.user.zeus.gent`), the signing algorithm (ED25519 or RSA), ...
 
 Execute:
